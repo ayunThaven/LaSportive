@@ -1,0 +1,32 @@
+{
+  "name": "la-sportive",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev -w @la-sportive/api\" \"npm run dev -w @la-sportive/web\"",
+    "build": "npm run build -w @la-sportive/contracts && npm run build -w @la-sportive/api && npm run build -w @la-sportive/web",
+    "test": "npm run test -w @la-sportive/api && npm run test -w @la-sportive/web",
+    "typecheck": "npm run typecheck -w @la-sportive/contracts && npm run typecheck -w @la-sportive/api && npm run typecheck -w @la-sportive/web",
+    "db:generate": "npm run db:generate -w @la-sportive/api",
+    "db:migrate": "npm run db:migrate -w @la-sportive/api",
+    "db:seed": "npm run db:seed -w @la-sportive/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "postcss": "8.5.15",
+    "next": {
+      "postcss": "8.5.15"
+    },
+    "uuid": "^11.1.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

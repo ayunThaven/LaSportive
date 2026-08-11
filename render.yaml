@@ -1,0 +1,75 @@
+services:
+  - type: web
+    name: la-sportive-api
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: "10000"
+      - key: WEB_ORIGIN
+        value: https://la-sportive-web.onrender.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_USERNAME
+        value: association
+      - key: APP_PASSWORD_HASH
+        sync: false
+      - key: SYNC_CRON
+        value: "*/15 * * * *"
+      - key: HELLOASSO_ENVIRONMENT
+        value: production
+      - key: HELLOASSO_ORGANIZATION_SLUG
+        sync: false
+      - key: HELLOASSO_CAMPAIGN_SLUG
+        sync: false
+      - key: HELLOASSO_CLIENT_ID
+        sync: false
+      - key: HELLOASSO_CLIENT_SECRET
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMTP_REPLY_TO
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_BASE64
+        sync: false
+      - key: GOOGLE_DRIVE_FOLDER_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REDIRECT_URL
+        value: https://la-sportive-api.onrender.com/api/v1/integrations/google-drive/callback
+
+  - type: web
+    name: la-sportive-web
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: commit
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://la-sportive-api.onrender.com/api/v1

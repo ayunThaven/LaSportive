@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MappingKind {
+  IDENTITE
+  LICENCE
+  DOCUMENT
+  REDUCTION_TYPE
+  REDUCTION_CODE
+}
+
+enum ComplianceIssueStatus {
+  NON_CONFORME
+  RELANCE
+  CORRECTION_RECUE
+  CONFORME
+}
+
+enum LicenseStatus {
+  A_TRAITER
+  TRAITE
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model Campaign {
+  id               String         @id @default(cuid())
+  helloAssoId      String?        @unique
+  title            String
+  season           String
+  organizationSlug String
+  formSlug         String
+  active           Boolean        @default(false)
+  archived         Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  enrollments      Enrollment[]
+  mappings         FieldMapping[]
+  syncRuns         SyncRun[]
+
+  @@unique([organizationSlug, formSlug])
+}
+
+model FieldMapping {
+  id        String      @id @default(cuid())
+  campaignId String
+  sourceKey String
+  label     String
+  kind      MappingKind
+  required  Boolean     @default(false)
+  position  Int         @default(0)
+  reductionDevice String?
+  campaign  Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, sourceKey, kind, reductionDevice])
+  @@index([campaignId, position])
+}
+
+model Enrollment {
+  id                 String        @id @default(cuid())
+  externalItemId     String        @unique
+  externalOrderId    String
+  campaignId         String
+  firstName          String
+  lastName           String
+  contactEmail       String        @default("")
+  sourceData         Json
+  helloAssoUrl       String?
+  active             Boolean       @default(true)
+  complianceValidatedAt DateTime?
+  licenseStatus      LicenseStatus @default(A_TRAITER)
+  licenseProcessedAt DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  campaign           Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  overrides          FieldOverride[]
+  issues             ComplianceIssue[]
+  reminders          Reminder[]
+
+  @@index([campaignId, active])
+  @@index([lastName, firstName])
+}
+
+model FieldOverride {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  fieldKey     String
+  value        String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, fieldKey])
+}
+
+model ComplianceIssue {
+  id           String                    @id @default(cuid())
+  enrollmentId String
+  fieldKey     String
+  fieldLabel   String
+  kind         String
+  reason       String
+  status       ComplianceIssueStatus     @default(NON_CONFORME)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  enrollment   Enrollment                @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  documents    DriveDocument[]
+
+  @@index([enrollmentId, status])
+}
+
+model DriveDocument {
+  id          String          @id @default(cuid())
+  issueId     String
+  driveFileId String
+  driveUrl    String
+  name        String
+  mimeType    String
+  createdAt   DateTime        @default(now())
+  issue       ComplianceIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+}
+
+model Reminder {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  recipient    String
+  subject      String
+  body         String
+  status       String
+  error        String?
+  sentAt       DateTime   @default(now())
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId, sentAt])
+}
+
+model SyncRun {
+  id         String     @id @default(cuid())
+  campaignId String
+  status     SyncStatus @default(RUNNING)
+  imported   Int        @default(0)
+  updated    Int        @default(0)
+  error      String?
+  startedAt  DateTime   @default(now())
+  finishedAt DateTime?
+  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, startedAt])
+}
+
+model AppSetting {
+  id            String   @id @default("singleton")
+  emailSubject  String   @default("Votre inscription nécessite une correction")
+  emailTemplate String   @db.Text
+  googleDriveRefreshToken String? @db.Text
+  googleDriveFolderId String?
+  googleDriveFolderName String?
+  helloAssoRefreshToken String? @db.Text
+  updatedAt     DateTime @updatedAt
+}
