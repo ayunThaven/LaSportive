@@ -75,7 +75,7 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
     const token = await reply.jwtSign({ sub: "shared-account", username: input.username }, { expiresIn: "8h" });
     reply.setCookie("la_sportive_session", token, {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: config.NODE_ENV === "production" ? "none" : "lax",
       secure: config.NODE_ENV === "production",
       path: "/",
       maxAge: 8 * 60 * 60,
