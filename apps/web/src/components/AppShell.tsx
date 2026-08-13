@@ -16,6 +16,8 @@ const navigation = [
   { href: "/reductions", label: "Réductions", icon: BadgePercent },
 ];
 
+const showRawJson = process.env.NODE_ENV !== "production";
+
 export function AppShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const router = useRouter();
@@ -96,14 +98,14 @@ export function AppShell({ children }: PropsWithChildren) {
         <header className={styles.topbar}>
           <div><span className={styles.seasonDot}/><strong>{season}</strong><small>{campaignLabel}</small></div>
           <section className={jsonStyles.topbarActions}>
-            <Button variant="ghost" onClick={showRawHelloAsso} disabled={syncing || loadingRawJson}><CodeXml size={16}/>{loadingRawJson ? "Chargement…" : "Voir le JSON"}</Button>
+            {showRawJson && <Button variant="ghost" onClick={showRawHelloAsso} disabled={syncing || loadingRawJson}><CodeXml size={16}/>{loadingRawJson ? "Chargement…" : "Voir le JSON"}</Button>}
             <Button variant="secondary" onClick={synchronize} disabled={syncing || loadingRawJson}><RefreshCw size={16} className={syncing ? styles.spin : ""}/>{syncing ? "Synchronisation…" : "Actualiser HelloAsso"}</Button>
           </section>
         </header>
         {message && <div className={styles.toast}>{message}</div>}
         <div className={styles.content}>{children}</div>
       </main>
-      {rawHelloAsso !== undefined && <Modal title="JSON reçu de HelloAsso" onClose={() => setRawHelloAsso(undefined)} footer={<Button variant="secondary" onClick={() => setRawHelloAsso(undefined)}>Fermer</Button>}>
+      {showRawJson && rawHelloAsso !== undefined && <Modal title="JSON reçu de HelloAsso" onClose={() => setRawHelloAsso(undefined)} footer={<Button variant="secondary" onClick={() => setRawHelloAsso(undefined)}>Fermer</Button>}>
         <p className={jsonStyles.hint}>Données brutes de la campagne active. Elles peuvent contenir des informations personnelles.</p>
         <pre className={jsonStyles.content}>{JSON.stringify(rawHelloAsso, null, 2)}</pre>
       </Modal>}

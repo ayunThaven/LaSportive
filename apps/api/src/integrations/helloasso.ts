@@ -44,6 +44,26 @@ function customFieldDefinitions(...containers: unknown[]): HelloAssoFieldDto[] {
   return [...result.values()];
 }
 
+function formCustomFieldDefinitions(value: unknown): HelloAssoFieldDto[] {
+  const result = new Map<string, HelloAssoFieldDto>();
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    const record = object(node);
+    for (const [key, child] of Object.entries(record)) {
+      if (key === "customFields") {
+        for (const field of customFieldDefinitions(child)) result.set(field.key, field);
+      } else {
+        visit(child);
+      }
+    }
+  };
+  visit(value);
+  return [...result.values()];
+}
+
 function isInactive(state: string) {
   const normalized = state.toLowerCase();
   return ["refund", "cancel", "aband", "rejet"].some((fragment) => normalized.includes(fragment));
@@ -155,6 +175,10 @@ export class HelloAssoClient {
       ["discountType", { key: "discountType", label: "Type de réduction" }],
       ["discountCode", { key: "discountCode", label: "Code de réduction" }],
     ]);
+    // A draft campaign can have no orders yet. Its form definition remains
+    // available through HelloAsso's public-form endpoint, including fields
+    // attached to its membership tiers.
+    for (const field of formCustomFieldDefinitions(await this.getPublicForm(campaign))) fields.set(field.key, field);
     for (const rawOrder of await this.getRawOrders(campaign)) {
       const order = object(rawOrder);
       for (const rawItem of Array.isArray(order.items) ? order.items : []) {
@@ -164,6 +188,16 @@ export class HelloAssoClient {
       }
     }
     return [...fields.values()];
+  }
+
+  private async getPublicForm(campaign: CampaignRecord): Promise<unknown> {
+    if (config.DEMO_MODE) return {};
+    if (!config.HELLOASSO_CLIENT_ID || !config.HELLOASSO_CLIENT_SECRET) throw new Error("La connexion HelloAsso n’est pas configurée.");
+    const token = await this.getToken();
+    const url = new URL(`/v5/organizations/${encodeURIComponent(campaign.organizationSlug)}/forms/Membership/${encodeURIComponent(campaign.formSlug)}/public`, this.baseUrl);
+    const response = await this.authorizedFetch(url, token);
+    if (!response.ok) throw new Error(`HelloAsso a répondu avec le statut ${response.status}.`);
+    return response.json();
   }
 
   /**
