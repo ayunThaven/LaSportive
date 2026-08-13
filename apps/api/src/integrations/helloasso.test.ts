@@ -66,6 +66,28 @@ describe("normalisation HelloAsso", () => {
     }
   });
 
+  it("récupère les champs d’une campagne brouillon même sans adhésion", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("oauth2/token")) return new Response(JSON.stringify({ access_token: "token" }), { status: 200 });
+      if (url.endsWith("/public")) return new Response(JSON.stringify({ tiers: [{ customFields: [
+        { id: 123, name: "Certificat médical" },
+        { id: 456, name: "Numéro de licence" },
+      ] }] }), { status: 200 });
+      return new Response(JSON.stringify({ data: [], pagination: { totalPages: 1 } }), { status: 200 });
+    };
+    try {
+      const fields = await new HelloAssoClient().listCampaignFields(campaign);
+      expect(fields).toEqual(expect.arrayContaining([
+        { key: "123", label: "Certificat médical" },
+        { key: "456", label: "Numéro de licence" },
+      ]));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("peut exposer les commandes brutes sans les normaliser", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (_input) => new Response(JSON.stringify({ access_token: "token" }), { status: 200 });
