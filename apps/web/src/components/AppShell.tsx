@@ -3,7 +3,7 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BadgeCheck, BadgePercent, CodeXml, FileCheck2, LogOut, Menu, RefreshCw, Settings, X } from "lucide-react";
+import { BadgeCheck, BadgePercent, CodeXml, FileCheck2, LogOut, Menu, RefreshCw, Settings, ShieldCheck, X } from "lucide-react";
 import type { SettingsDto } from "@la-sportive/contracts";
 import { api } from "@/lib/api";
 import { Button, Modal, Spinner } from "./ui";
@@ -13,7 +13,8 @@ import jsonStyles from "./AppShellJson.module.css";
 const navigation = [
   { href: "/conformite", label: "Conformité", icon: FileCheck2 },
   { href: "/licences", label: "Licences", icon: BadgeCheck },
-  { href: "/reductions", label: "Réductions", icon: BadgePercent },
+  { href: "/reductions", label: "Comptabilité", icon: BadgePercent },
+  { href: "/autorisations", label: "Autorisations", icon: ShieldCheck },
 ];
 
 const showRawJson = process.env.NODE_ENV !== "production";

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { randomUUID } from "node:crypto";
 import { google } from "googleapis";
 import {
+  type AuthorizationRowDto,
   issueCreateSchema,
   issueStatusSchema,
   helloAssoCampaignSelectionSchema,
@@ -233,7 +234,23 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
   });
 
   app.get("/api/v1/discounts", { preHandler: authenticate }, async () => {
-    const data = (await repository.listEnrollments()).map(toSummary).filter((item) => item.discountType || item.discountCode);
+    const data = (await repository.listEnrollments()).map(toSummary).filter((item) => item.discountType || item.discountCode || item.paymentAmount || item.paymentMethod);
+    return { data };
+  });
+
+  app.get("/api/v1/authorizations", { preHandler: authenticate }, async () => {
+    const data: AuthorizationRowDto[] = (await repository.listEnrollments()).map((record) => {
+      const summary = toSummary(record);
+      return {
+        id: summary.id,
+        firstName: summary.firstName,
+        lastName: summary.lastName,
+        contactEmail: summary.contactEmail,
+        fields: toDetail(record).fields
+          .filter((field) => field.kind === "AUTORISATION")
+          .map(({ key, label, value }) => ({ key, label, value })),
+      };
+    });
     return { data };
   });
 

@@ -56,6 +56,11 @@ function record(input: Partial<EnrollmentRecord> & Pick<EnrollmentRecord, "id" |
     identityPhoto: "Pièce fournie dans HelloAsso",
     discountType: "",
     discountCode: "",
+    paymentAmount: "120.00",
+    paymentMethod: "Carte bancaire",
+    paymentStatus: "Validé",
+    paymentDate: "2026-08-01",
+    paymentReference: `PAY-${input.id}`,
     ...input.sourceData,
   };
   return {
