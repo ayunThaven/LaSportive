@@ -17,7 +17,7 @@ export const issueStatuses = [
 ] as const;
 export type IssueStatus = (typeof issueStatuses)[number];
 
-export const mappingKinds = ["IDENTITE", "LICENCE", "DOCUMENT", "REDUCTION_TYPE", "REDUCTION_CODE"] as const;
+export const mappingKinds = ["IDENTITE", "LICENCE", "DOCUMENT", "REDUCTION_TYPE", "REDUCTION_CODE", "ACCOUNTING", "AUTORISATION"] as const;
 export type MappingKind = (typeof mappingKinds)[number];
 
 export type EffectiveField = {
@@ -73,6 +73,11 @@ export type EnrollmentSummary = {
   discountType?: string;
   discountCode?: string;
   reductions: { device: string; code: string }[];
+  paymentAmount?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  paymentDate?: string;
+  paymentReference?: string;
   updatedAt: string;
 };
 
@@ -81,6 +86,10 @@ export type EnrollmentDetail = EnrollmentSummary & {
   fields: EffectiveField[];
   issues: ComplianceIssueDto[];
   reminders: ReminderDto[];
+};
+
+export type AuthorizationRowDto = Pick<EnrollmentSummary, "id" | "firstName" | "lastName" | "contactEmail"> & {
+  fields: Pick<EffectiveField, "key" | "label" | "value">[];
 };
 
 export type FieldMappingDto = {
@@ -164,7 +173,8 @@ export const overrideSchema = z.object({
 export const mappingSchema = z.object({
   id: z.string().optional(),
   sourceKey: z.string().min(1).max(200),
-  label: z.string().min(1).max(200),
+  // HelloAsso questions can be full consent statements, not short labels.
+  label: z.string().min(1).max(1000),
   kind: z.enum(mappingKinds),
   required: z.boolean().default(false),
   position: z.number().int().min(0),

@@ -50,6 +50,11 @@ describe("normalisation HelloAsso", () => {
     expect(item?.sourceData.discountAmount).toBe("150.00");
   });
 
+  it("normalise les informations de paiement de la commande", () => {
+    const [item] = normalizeHelloAssoOrders([{ id: 95, state: "Processed", payments: [{ id: 42, amount: 2500, paymentMeans: "Card", state: "Authorized", date: "2026-08-20" }], items: [{ id: 6, name: "Adhésion adulte", amount: 12000, user: { firstName: "Lina", lastName: "Petit" } }] }], campaign);
+    expect(item?.sourceData).toMatchObject({ paymentAmount: "120.00", paymentMethod: "Adhésion adulte", paymentStatus: "Authorized", paymentDate: "2026-08-20", paymentReference: "42" });
+  });
+
   it("demande les détails afin de recevoir les champs personnalisés", async () => {
     const requests: string[] = [];
     const originalFetch = globalThis.fetch;
@@ -82,6 +87,7 @@ describe("normalisation HelloAsso", () => {
       expect(fields).toEqual(expect.arrayContaining([
         { key: "123", label: "Certificat médical" },
         { key: "456", label: "Numéro de licence" },
+        { key: "paymentAmount", label: "Montant du paiement" },
       ]));
     } finally {
       globalThis.fetch = originalFetch;

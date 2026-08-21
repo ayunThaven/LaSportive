@@ -15,14 +15,36 @@ function text(value: unknown): string {
   return "";
 }
 
+/**
+ * HelloAsso may return custom fields at different depths depending on the
+ * form version and the order endpoint. Walk the order payload instead of
+ * assuming they always live directly on an item or its user.
+ */
+function customFieldContainers(value: unknown): unknown[][] {
+  const containers: unknown[][] = [];
+  const visited = new Set<UnknownObject>();
+  const visit = (current: unknown) => {
+    if (Array.isArray(current)) { current.forEach(visit); return; }
+    const record = object(current);
+    if (!Object.keys(record).length || visited.has(record)) return;
+    visited.add(record);
+    for (const [key, child] of Object.entries(record)) {
+      if (key.toLocaleLowerCase("en-US") === "customfields" && Array.isArray(child)) containers.push(child);
+      visit(child);
+    }
+  };
+  visit(value);
+  return containers;
+}
+
 function customFieldValues(...containers: unknown[]): Record<string, string> {
   const result: Record<string, string> = {};
   for (const container of containers) {
     const fields = Array.isArray(container) ? container : [];
     for (const raw of fields) {
       const field = object(raw);
-      const value = text(field.answer ?? field.value ?? field.formattedValue);
-      const id = text(field.id ?? field.fieldId);
+      const value = text(field.answer ?? field.value ?? field.formattedValue ?? field.response);
+      const id = text(field.id ?? field.fieldId ?? field.key ?? field.slug);
       const name = text(field.name ?? field.label ?? field.question);
       if (id) result[id] = value;
       if (name) result[name] = value;
@@ -36,8 +58,8 @@ function customFieldDefinitions(...containers: unknown[]): HelloAssoFieldDto[] {
   for (const container of containers) {
     for (const raw of Array.isArray(container) ? container : []) {
       const field = object(raw);
-      const key = text(field.id ?? field.fieldId);
-      const label = text(field.name ?? field.label ?? field.question);
+      const label = text(field.name ?? field.label ?? field.question ?? field.title);
+      const key = text(field.id ?? field.fieldId ?? field.key ?? field.slug) || label;
       if (key && label) result.set(key, { key, label });
     }
   }
@@ -47,13 +69,10 @@ function customFieldDefinitions(...containers: unknown[]): HelloAssoFieldDto[] {
 function formCustomFieldDefinitions(value: unknown): HelloAssoFieldDto[] {
   const result = new Map<string, HelloAssoFieldDto>();
   const visit = (node: unknown) => {
-    if (Array.isArray(node)) {
-      for (const item of node) visit(item);
-      return;
-    }
+    if (Array.isArray(node)) { node.forEach(visit); return; }
     const record = object(node);
     for (const [key, child] of Object.entries(record)) {
-      if (key === "customFields") {
+      if (key.toLocaleLowerCase("en-US") === "customfields") {
         for (const field of customFieldDefinitions(child)) result.set(field.key, field);
       } else {
         visit(child);
@@ -73,6 +92,24 @@ function firstFieldValue(fields: Record<string, string>, ...keys: string[]) {
   return keys.map((key) => fields[key]).find((value) => Boolean(value)) ?? "";
 }
 
+function displayPaymentMethod(value: unknown): string {
+  const method = text(value);
+  const labels: Record<string, string> = {
+    card: "Carte bancaire",
+    check: "Chèque",
+    cheque: "Chèque",
+    cash: "Espèces",
+    banktransfer: "Virement bancaire",
+    transfer: "Virement bancaire",
+    directdebit: "Prélèvement bancaire",
+    sepa: "Prélèvement bancaire",
+    applepay: "Apple Pay",
+    googlepay: "Google Pay",
+  };
+  const key = method.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  return labels[key] ?? method;
+}
+
 export function normalizeHelloAssoOrders(orders: unknown[], campaign: CampaignRecord): SourceEnrollment[] {
   const output: SourceEnrollment[] = [];
   const contactMapping = campaign.mappings.find((mapping) => mapping.sourceKey === "contactEmail" || mapping.label.toLowerCase().includes("mail de contact"));
@@ -81,6 +118,8 @@ export function normalizeHelloAssoOrders(orders: unknown[], campaign: CampaignRe
     const orderId = text(order.id);
     const state = text(order.state ?? order.status);
     const payer = object(order.payer);
+    const payments = Array.isArray(order.payments) ? order.payments.map(object) : [];
+    const payment = payments.find((item) => !isInactive(text(item.state ?? item.status))) ?? payments[0] ?? {};
     const items = Array.isArray(order.items) ? order.items : [];
     for (const rawItem of items) {
       const item = object(rawItem);
@@ -88,7 +127,7 @@ export function normalizeHelloAssoOrders(orders: unknown[], campaign: CampaignRe
       if (!itemId) continue;
       const user = object(item.user ?? item.participant);
       const discount = object(item.discount);
-      const fields = customFieldValues(item.customFields, user.customFields, order.customFields);
+      const fields = customFieldValues(...customFieldContainers(item), ...customFieldContainers(user), ...customFieldContainers(order));
       const firstName = text(user.firstName ?? item.firstName) || firstFieldValue(fields, "firstName", "Prénom");
       const lastName = text(user.lastName ?? item.lastName) || firstFieldValue(fields, "lastName", "Nom");
       // An order may contain non-member items (for example a contribution or
@@ -106,6 +145,14 @@ export function normalizeHelloAssoOrders(orders: unknown[], campaign: CampaignRe
         discountCode: text(discount.code),
         discountType: text(discount.code).split(":")[0]?.trim() ?? "",
         discountAmount: typeof discount.amount === "number" ? (discount.amount / 100).toFixed(2) : "",
+        // The item identifies the membership option selected in HelloAsso
+        // (for example "Adhésion adulte"), whereas paymentMeans only tells
+        // us the technical payment channel ("Card", "Check", etc.).
+        paymentAmount: typeof item.amount === "number" ? (item.amount / 100).toFixed(2) : typeof payment.amount === "number" ? (payment.amount / 100).toFixed(2) : "",
+        paymentMethod: text(item.name ?? item.label ?? item.title) || displayPaymentMethod(payment.paymentMeans ?? payment.paymentMethod ?? payment.method ?? payment.type),
+        paymentStatus: text(payment.state ?? payment.status ?? order.state ?? order.status),
+        paymentDate: text(payment.date ?? payment.createdAt ?? payment.paymentDate),
+        paymentReference: text(payment.id ?? payment.reference ?? payment.transactionId),
       };
       const contactEmail = contactMapping
         ? firstFieldValue(fields, contactMapping.sourceKey, contactMapping.label, "E-mail de contact", "Email de contact") || text(payer.email)
@@ -174,17 +221,20 @@ export class HelloAssoClient {
       ["contactEmail", { key: "contactEmail", label: "E-mail de contact" }],
       ["discountType", { key: "discountType", label: "Type de réduction" }],
       ["discountCode", { key: "discountCode", label: "Code de réduction" }],
+      ["paymentAmount", { key: "paymentAmount", label: "Montant du paiement" }],
+      ["paymentMethod", { key: "paymentMethod", label: "Option de paiement" }],
+      ["paymentStatus", { key: "paymentStatus", label: "Statut du paiement" }],
+      ["paymentDate", { key: "paymentDate", label: "Date du paiement" }],
+      ["paymentReference", { key: "paymentReference", label: "Référence du paiement" }],
     ]);
-    // A draft campaign can have no orders yet. Its form definition remains
-    // available through HelloAsso's public-form endpoint, including fields
-    // attached to its membership tiers.
+    // A form definition is available before the first membership, including
+    // fields attached to membership tiers.
     for (const field of formCustomFieldDefinitions(await this.getPublicForm(campaign))) fields.set(field.key, field);
     for (const rawOrder of await this.getRawOrders(campaign)) {
       const order = object(rawOrder);
       for (const rawItem of Array.isArray(order.items) ? order.items : []) {
         const item = object(rawItem);
-        const user = object(item.user ?? item.participant);
-        for (const field of customFieldDefinitions(item.customFields, user.customFields, order.customFields)) fields.set(field.key, field);
+        for (const field of customFieldDefinitions(...customFieldContainers(item), ...customFieldContainers(order))) fields.set(field.key, field);
       }
     }
     return [...fields.values()];

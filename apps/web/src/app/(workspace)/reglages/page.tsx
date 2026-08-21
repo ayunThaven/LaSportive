@@ -7,16 +7,17 @@ import { Button, Modal, Spinner } from "@/components/ui";
 import { API_URL, api } from "@/lib/api";
 import styles from "./settings.module.css";
 
-const modules = { CONFORMITE: "Conformité", LICENCES: "Licences", REDUCTIONS: "Réductions" } as const;
+const modules = { CONFORMITE: "Conformité", LICENCES: "Licences", REDUCTIONS: "Comptabilité", AUTORISATIONS: "Autorisations" } as const;
 const reductionDevices = ["Pass’Sport", "Carte Jeune", "Pass’Région"] as const;
+const allReductionDevices = ["TOUS", ...reductionDevices] as const;
 type Module = keyof typeof modules;
 type SettingsTab = "CONNECTIONS" | "CAMPAIGN";
 type DropPosition = "before" | "after";
 type ResettingConnection = "helloAsso" | "googleDrive" | "gmail";
 type DriveFolder = { id: string; name: string };
 
-const moduleFor = (kind: MappingKind): Module => kind === "LICENCE" ? "LICENCES" : kind.startsWith("REDUCTION") ? "REDUCTIONS" : "CONFORMITE";
-const mappingKindFor = (module: Module): MappingKind => module === "LICENCES" ? "LICENCE" : module === "REDUCTIONS" ? "REDUCTION_CODE" : "DOCUMENT";
+const moduleFor = (kind: MappingKind): Module => kind === "LICENCE" ? "LICENCES" : kind.startsWith("REDUCTION") || kind === "ACCOUNTING" ? "REDUCTIONS" : kind === "AUTORISATION" ? "AUTORISATIONS" : "CONFORMITE";
+const mappingKindFor = (module: Module, device?: string): MappingKind => module === "LICENCES" ? "LICENCE" : module === "REDUCTIONS" ? (device === "TOUS" ? "ACCOUNTING" : "REDUCTION_CODE") : module === "AUTORISATIONS" ? "AUTORISATION" : "DOCUMENT";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsDto>();
@@ -25,7 +26,7 @@ export default function SettingsPage() {
   const [fields, setFields] = useState<HelloAssoFieldDto[]>([]);
   const [tab, setTab] = useState<SettingsTab>("CONNECTIONS");
   const [module, setModule] = useState<Module>("CONFORMITE");
-  const [reductionDevice, setReductionDevice] = useState<(typeof reductionDevices)[number]>(reductionDevices[0]);
+  const [reductionDevice, setReductionDevice] = useState<(typeof allReductionDevices)[number]>("TOUS");
   const [message, setMessage] = useState<string>();
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [loadingFields, setLoadingFields] = useState(false);
@@ -76,17 +77,17 @@ export default function SettingsPage() {
       setResettingConnection(undefined);
     }
   }
-  function isInCurrentModule(mapping: FieldMappingDto) { return moduleFor(mapping.kind) === module && (module !== "REDUCTIONS" || mapping.reductionDevice === reductionDevice); }
+  function isInCurrentModule(mapping: FieldMappingDto) { return moduleFor(mapping.kind) === module && (module !== "REDUCTIONS" || reductionDevice === "TOUS" || mapping.reductionDevice === reductionDevice); }
   function toggleField(field: HelloAssoFieldDto) {
     const existing = mappingsRef.current.filter((item) => item.sourceKey === field.key && isInCurrentModule(item));
-    const currentReductionMappings = mappingsRef.current.filter((item) => moduleFor(item.kind) === "REDUCTIONS" && item.reductionDevice === reductionDevice);
+    const currentReductionMappings = mappingsRef.current.filter((item) => moduleFor(item.kind) === "REDUCTIONS" && (reductionDevice === "TOUS" || item.reductionDevice === reductionDevice));
     if (existing.length) {
-      if (module === "REDUCTIONS" && currentReductionMappings.length > 1) { changeMappings(mappingsRef.current.filter((item) => !currentReductionMappings.includes(item) || existing.includes(item))); return; }
+      if (module === "REDUCTIONS" && reductionDevice !== "TOUS" && currentReductionMappings.length > 1) { changeMappings(mappingsRef.current.filter((item) => !currentReductionMappings.includes(item) || existing.includes(item))); return; }
       changeMappings(mappingsRef.current.filter((item) => !existing.includes(item)));
       return;
     }
-    const withoutCurrentReduction = module === "REDUCTIONS" ? mappingsRef.current.filter((item) => !(moduleFor(item.kind) === "REDUCTIONS" && item.reductionDevice === reductionDevice)) : mappingsRef.current;
-    changeMappings([...withoutCurrentReduction, { id: `new-${Date.now()}`, sourceKey: field.key, label: field.label, kind: mappingKindFor(module), required: false, position: withoutCurrentReduction.length, ...(module === "REDUCTIONS" ? { reductionDevice } : {}) }]);
+    const withoutCurrentReduction = module === "REDUCTIONS" && reductionDevice !== "TOUS" ? mappingsRef.current.filter((item) => !(moduleFor(item.kind) === "REDUCTIONS" && item.reductionDevice === reductionDevice)) : mappingsRef.current;
+    changeMappings([...withoutCurrentReduction, { id: `new-${Date.now()}`, sourceKey: field.key, label: field.label, kind: mappingKindFor(module, reductionDevice), required: false, position: withoutCurrentReduction.length, ...(module === "REDUCTIONS" && reductionDevice !== "TOUS" ? { reductionDevice } : {}) }]);
   }
   function reorderMappings(sourceId: string, targetId: string, position: DropPosition) {
     if (sourceId === targetId) return;
@@ -118,7 +119,8 @@ export default function SettingsPage() {
       <div className={styles.campaignHeader}><div><small>CAMPAGNE ACTIVE</small><h2>{active?.title ?? "Aucune campagne"}</h2><p>Les modifications de sélection sont sauvegardées automatiquement.</p></div><Button variant="secondary" onClick={loadCampaigns} disabled={loadingCampaigns}><RefreshCw size={15} />{loadingCampaigns ? "Chargement…" : "Actualiser HelloAsso"}</Button></div>
       <div className="field"><label>Campagne d’adhésion</label><select value="" onChange={(event) => selectCampaign(event.target.value)} disabled={loadingCampaigns}><option value="">Sélectionnez une campagne…</option>{campaigns.map((campaign) => <option key={campaign.formSlug} value={campaign.formSlug}>{campaign.title}</option>)}</select></div>
       <div className={styles.moduleTabs} role="tablist" aria-label="Modules">{Object.entries(modules).map(([key, label]) => <button key={key} role="tab" aria-selected={module === key} className={module === key ? styles.activeModule : ""} onClick={() => setModule(key as Module)}>{label}</button>)}</div>
-      {module === "REDUCTIONS" && <div className={styles.deviceTabs} role="tablist" aria-label="Dispositifs d’aide">{reductionDevices.map((device) => <button key={device} className={reductionDevice === device ? styles.activeDevice : ""} onClick={() => setReductionDevice(device)}>{device}</button>)}</div>}
+      {module === "AUTORISATIONS" && <p className={styles.moduleHint}>Sélectionnez les champs à consulter dans la vue Autorisations : coordonnées d’urgence, droit à l’image, autorisation de soin et autorisation de sortie.</p>}
+      {module === "REDUCTIONS" && <div className={styles.deviceTabs} role="tablist" aria-label="Sous-onglets de comptabilité">{allReductionDevices.map((device) => <button key={device} className={reductionDevice === device ? styles.activeDevice : ""} onClick={() => setReductionDevice(device)}>{device === "TOUS" ? "Tous" : device}</button>)}</div>}
       <div className={styles.fieldList}>{loadingFields ? <Spinner /> : fields.length === 0 ? <p className={styles.empty}>Sélectionnez une campagne pour afficher ses champs.</p> : fields.map((field) => { const checked = mappings.some((mapping) => mapping.sourceKey === field.key && isInCurrentModule(mapping)); return <label className={styles.fieldChoice} key={field.key}><input type="checkbox" checked={checked} onChange={() => toggleField(field)} /><span className={styles.checkbox}>{checked && <Check size={14} />}</span><span>{field.label}</span></label>; })}</div>
       {selectedMappings.length > 0 && <section className={styles.orderSection}><div><h3>Ordre d’affichage</h3><p>Glissez-déposez les champs pour organiser la fiche.</p></div><div className={styles.orderList}>{selectedMappings.map((mapping, index) => { const position = dropTarget?.id === mapping.id ? dropTarget.position : undefined; return <div className={`${styles.orderItem} ${draggedMappingId === mapping.id ? styles.dragging : ""} ${position === "before" ? styles.dropBefore : ""} ${position === "after" ? styles.dropAfter : ""}`} key={mapping.id} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; setDraggedMappingId(mapping.id); setDropTarget(undefined); }} onDragOver={(event) => { event.preventDefault(); if (draggedMappingId !== mapping.id) { const bounds = event.currentTarget.getBoundingClientRect(); setDropTarget({ id: mapping.id, position: event.clientY < bounds.top + bounds.height / 2 ? "before" : "after" }); } }} onDrop={(event) => { event.preventDefault(); if (draggedMappingId && dropTarget?.id === mapping.id) reorderMappings(draggedMappingId, mapping.id, dropTarget.position); setDraggedMappingId(undefined); setDropTarget(undefined); }} onDragEnd={() => { setDraggedMappingId(undefined); setDropTarget(undefined); }}><span>{index + 1}</span><GripVertical className={styles.dragHandle} size={17} aria-hidden="true" /><strong>{mapping.label}</strong></div>; })}</div></section>}
     </section>}

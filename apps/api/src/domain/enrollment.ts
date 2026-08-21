@@ -83,6 +83,11 @@ export function toSummary(record: EnrollmentRecord): EnrollmentSummary {
     discountType: reductionType,
     discountCode: reductionCode,
     reductions,
+    paymentAmount: record.sourceData.paymentAmount || undefined,
+    paymentMethod: record.sourceData.paymentMethod || undefined,
+    paymentStatus: record.sourceData.paymentStatus || undefined,
+    paymentDate: record.sourceData.paymentDate || undefined,
+    paymentReference: record.sourceData.paymentReference || undefined,
     updatedAt: record.updatedAt.toISOString(),
   };
 }

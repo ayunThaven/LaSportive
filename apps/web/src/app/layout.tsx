@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./checkbox-fix.css";
 import "./globals.css";
+import "./print.css";
 
 export const metadata: Metadata = { title: "La Sportive", description: "Gestion des adhésions HelloAsso" };
 
