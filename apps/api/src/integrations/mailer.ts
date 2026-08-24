@@ -1,3 +1,4 @@
+import net from "node:net";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { config } from "../config.js";
@@ -14,6 +15,15 @@ export class Mailer {
       port: config.SMTP_PORT,
       secure: config.SMTP_SECURE,
       auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASSWORD } : undefined,
+      getSocket: (_options: unknown, callback: (error: Error | null, socketOptions: object) => void) => {
+        const socket = net.connect({ host: config.SMTP_HOST, port: config.SMTP_PORT, family: 4 });
+        const onError = (error: Error) => callback(error, { connection: socket });
+        socket.once("error", onError);
+        socket.once("connect", () => {
+          socket.removeListener("error", onError);
+          callback(null, { connection: socket });
+        });
+      },
     });
     return this.transport;
   }
