@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import styles from "./page.module.css";
 
 type AuthorizationField = AuthorizationRowDto["fields"][number];
-type PrintRow = { item: AuthorizationRowDto; emergency: string; outing: string; image: string; care: string };
+type PrintRow = { item: AuthorizationRowDto; emergency: string; outing: string; image: string; care: string; transport: string };
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").toLocaleLowerCase("fr").trim();
@@ -45,7 +45,7 @@ function fieldMatching(item: AuthorizationRowDto, predicate: (label: string) => 
 }
 
 function PrintTable({ rows }: { rows: PrintRow[] }) {
-  return <table className={styles.printTable}><thead><tr><th>Adhérent</th><th>Contact d&apos;urgence</th><th>Sortie</th><th>Droit à l&apos;image</th><th>Soins</th></tr></thead><tbody>{rows.map(({ item, emergency, outing, image, care }) => <tr key={item.id}><td>{item.firstName} {item.lastName}</td><td>{emergency}</td><td className={styles.mark}>{outing}</td><td className={styles.mark}>{image}</td><td className={styles.mark}>{care}</td></tr>)}</tbody></table>;
+  return <table className={styles.printTable}><thead><tr><th>Adhérent</th><th>Contact d&apos;urgence</th><th>Sortie</th><th>Droit à l&apos;image</th><th>Soins</th><th>Transport</th></tr></thead><tbody>{rows.map(({ item, emergency, outing, image, care, transport }) => <tr key={item.id}><td>{item.firstName} {item.lastName}</td><td>{emergency}</td><td className={styles.mark}>{outing}</td><td className={styles.mark}>{image}</td><td className={styles.mark}>{care}</td><td className={styles.mark}>{transport}</td></tr>)}</tbody></table>;
 }
 
 export default function AuthorizationsPage() {
@@ -75,7 +75,8 @@ export default function AuthorizationsPage() {
     const outing = fieldMatching(item, (label) => label.includes("autorisation de sortie") || (label.includes("quitter") && label.includes("salle de gym")));
     const care = fieldMatching(item, (label) => label.includes("decision medicale") || (label.includes("accident") && label.includes("urgence")));
     const image = fieldMatching(item, (label) => label.includes("prise de photo") || label.includes("diffusion de photo") || (label.includes("prise") && label.includes("diffusion") && label.includes("photo")));
-    return { item, emergency: compactContact(contact), outing: printMark(outing), image: printMark(image), care: printMark(care) };
+    const transport = fieldMatching(item, (label) => label.includes("transporter"));
+    return { item, emergency: compactContact(contact), outing: printMark(outing), image: printMark(image), care: printMark(care), transport: printMark(transport) };
   }), [filtered]);
 
   return <>

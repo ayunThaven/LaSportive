@@ -8,9 +8,9 @@
   .printTable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5pt}
   .printTable th,.printTable td{border:1px solid #555;padding:2mm 1.5mm;vertical-align:top;overflow-wrap:anywhere}
   .printTable th{background:#eee;text-align:left;font-size:7pt;text-transform:uppercase}
-  .printTable th:nth-child(1){width:25%}
-  .printTable th:nth-child(2){width:30%}
-  .printTable th:nth-child(3),.printTable th:nth-child(4),.printTable th:nth-child(5){width:15%}
+  .printTable th:nth-child(1){width:22%}
+  .printTable th:nth-child(2){width:28%}
+  .printTable th:nth-child(3),.printTable th:nth-child(4),.printTable th:nth-child(5),.printTable th:nth-child(6){width:12.5%}
   .printTable tr{break-inside:avoid}
   .mark{text-align:center;font-size:12pt;font-weight:700;vertical-align:middle!important}
   @page{size:A4 landscape;margin:8mm}
