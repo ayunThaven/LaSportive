@@ -173,12 +173,13 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
     </aside>
     {issueOpen && <IssueModal fields={fields} onClose={() => setIssueOpen(false)} onSubmit={createIssue} />}
     {edited && <EditModal field={edited} onClose={() => setEdited(undefined)} onSubmit={saveValue} />}
-    {reminderOpen && <ReminderModal preview={reminderPreview} loading={loadingPreview} sending={sendingReminder} onClose={() => setReminderOpen(false)} onSend={sendReminder} />}
+    {reminderOpen && <ReminderModal preview={reminderPreview} loading={loadingPreview} sending={sendingReminder} error={error} onClose={() => setReminderOpen(false)} onSend={sendReminder} />}
   </>;
 }
 
-function ReminderModal({ preview, loading, sending, onClose, onSend }: { preview?: ReminderPreview; loading: boolean; sending: boolean; onClose: () => void; onSend: () => void }) {
+function ReminderModal({ preview, loading, sending, error, onClose, onSend }: { preview?: ReminderPreview; loading: boolean; sending: boolean; error?: string; onClose: () => void; onSend: () => void }) {
   return <Modal title="Envoyer l’e-mail de signalement" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose} disabled={sending}>Annuler</Button><Button onClick={onSend} disabled={!preview || loading || sending}><Send size={15} />{sending ? "Envoi…" : "Envoyer"}</Button></>}>
+    {error && <div className="errorBanner" role="alert">{error}</div>}
     {loading ? <div className={styles.previewLoading}><Spinner /></div> : preview ? <><div className={styles.previewMeta}><span>À</span><strong>{preview.recipient}</strong><span>Objet</span><strong>{preview.subject}</strong></div><p className={styles.preview}>{preview.body}</p><p className={styles.hint}>Vérifiez le contenu avant l’envoi. L’e-mail regroupe toutes les anomalies ouvertes.</p></> : <p className={styles.noIssue}>La prévisualisation n’a pas pu être chargée.</p>}
   </Modal>;
 }
