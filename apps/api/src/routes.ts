@@ -164,7 +164,10 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
   app.put<{ Params: Pick<Params, "id"> }>("/api/v1/enrollments/:id/compliance/validate", { preHandler: authenticate }, async (request, reply) => {
     const record = await repository.getEnrollment(request.params.id);
     if (!record) return reply.status(404).send({ message: "Adhérent introuvable." });
-    if (!["A_VALIDER", "VERIF_CERTIFICAT"].includes(complianceStatus(record))) return reply.status(422).send({ message: "Le dossier doit être complet et sans anomalie ouverte avant validation." });
+    const status = complianceStatus(record);
+    const { confirmIncomplete } = (request.body ?? {}) as { confirmIncomplete?: boolean };
+    if (status === "INCOMPLET" && confirmIncomplete !== true) return reply.status(422).send({ message: "Confirmez la validation d’un dossier incomplet." });
+    if (!["A_VALIDER", "VERIF_CERTIFICAT", "INCOMPLET"].includes(status)) return reply.status(422).send({ message: "Le dossier ne peut pas être validé tant qu’il comporte des anomalies ouvertes." });
     await repository.setComplianceValidated(record.id);
     return { ok: true };
   });

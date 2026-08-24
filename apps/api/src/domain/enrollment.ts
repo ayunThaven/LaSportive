@@ -47,9 +47,10 @@ export function complianceStatus(record: EnrollmentRecord): ComplianceStatus {
   const open = record.issues.filter((issue) => issue.status !== "CONFORME");
   const complianceFields = effectiveFields(record).filter((field) => field.kind === "IDENTITE" || field.kind === "DOCUMENT");
   if (open.length > 0) return "ANOMALIE";
+  if (record.complianceValidatedAt) return "VALIDE";
   if (complianceFields.some((field) => !isMedicalCertificate(field) && !field.value.trim())) return "INCOMPLET";
   if (!record.complianceValidatedAt && complianceFields.some((field) => isMedicalCertificate(field) && field.value.trim())) return "VERIF_CERTIFICAT";
-  return record.complianceValidatedAt ? "VALIDE" : "A_VALIDER";
+  return "A_VALIDER";
 }
 
 export function licenseReady(record: EnrollmentRecord): boolean {

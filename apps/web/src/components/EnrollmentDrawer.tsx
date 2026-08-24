@@ -24,6 +24,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [validating, setValidating] = useState(false);
+  const [incompleteValidationOpen, setIncompleteValidationOpen] = useState(false);
 
   async function load() {
     try {
@@ -38,6 +39,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
   const fields = useMemo(() => detail?.fields.filter((field) => module === "LICENCES" ? field.kind === "LICENCE" : field.kind === "IDENTITE" || field.kind === "DOCUMENT") ?? [], [detail, module]);
   const fieldKeys = useMemo(() => new Set(fields.map((field) => field.key)), [fields]);
   const issues = useMemo(() => detail?.issues.filter((issue) => fieldKeys.has(issue.fieldKey)) ?? [], [detail, fieldKeys]);
+  const missingComplianceFields = useMemo(() => detail?.fields.filter((field) => (field.kind === "IDENTITE" || field.kind === "DOCUMENT") && !isMedicalCertificateField(field) && !field.value.trim()) ?? [], [detail]);
 
   async function createIssue(input: IssueCreateInput) {
     setError(undefined); setNotice(undefined);
@@ -130,10 +132,11 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
     }
   }
 
-  async function validateCompliance() {
+  async function validateCompliance(confirmIncomplete = false) {
     setError(undefined); setNotice(undefined); setValidating(true);
     try {
-      await api(`/enrollments/${enrollmentId}/compliance/validate`, { method: "PUT" });
+      await api(`/enrollments/${enrollmentId}/compliance/validate`, { method: "PUT", body: JSON.stringify({ confirmIncomplete }) });
+      setIncompleteValidationOpen(false);
       await load(); onChanged();
       setNotice("Dossier validé.");
     } catch (caught) {
@@ -141,6 +144,14 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
     } finally {
       setValidating(false);
     }
+  }
+
+  function requestComplianceValidation() {
+    if (detail?.complianceStatus === "INCOMPLET") {
+      setIncompleteValidationOpen(true);
+      return;
+    }
+    void validateCompliance();
   }
 
   return <>
@@ -153,7 +164,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
         <section className={styles.section}>
           <div className={styles.sectionTitle}>
             <div><small>{module === "LICENCES" ? "LICENCES" : "CONFORMITÉ"}</small><h3>{module === "LICENCES" ? "Informations pour la licence" : "Données à vérifier"}</h3></div>
-            {module === "CONFORMITE" && <div className="toolbar">{["A_VALIDER", "VERIF_CERTIFICAT"].includes(detail.complianceStatus) && <Button onClick={validateCompliance} disabled={validating}><Check size={15} />{validating ? "Validation…" : "Valider le dossier"}</Button>}<Button variant="ghost" onClick={() => setIssueOpen(true)}><Plus size={15} />Signaler</Button></div>}
+            {module === "CONFORMITE" && <div className="toolbar">{["INCOMPLET", "A_VALIDER", "VERIF_CERTIFICAT"].includes(detail.complianceStatus) && <Button onClick={requestComplianceValidation} disabled={validating}><Check size={15} />{validating ? "Validation…" : "Valider le dossier"}</Button>}<Button variant="ghost" onClick={() => setIssueOpen(true)}><Plus size={15} />Signaler</Button></div>}
           </div>
           {module === "CONFORMITE" && <div style={{ marginBottom: ".8rem" }}><StatusPill status={detail.complianceStatus} /></div>}
           {fields.length === 0 ? <p className={styles.noIssue}>Aucun champ configuré pour ce module.</p> : <div className={styles.fields}>{fields.map((field) => <div className={styles.fieldRow} key={`${field.kind}-${field.key}`}><div><span>{field.label}{field.required && <b>*</b>}</span>{field.kind === "DOCUMENT" && isHttpUrl(field.value) ? <a href={field.value} target="_blank" rel="noreferrer"><FileText size={15} />Ouvrir le document<ExternalLink size={13} /></a> : <strong className={!field.value ? styles.missing : ""}>{field.value || "Non renseigné"}</strong>}</div><button onClick={() => setEdited({ key: field.key, label: field.label, value: field.value })}><Pencil size={15} /></button></div>)}</div>}
@@ -174,6 +185,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
     {issueOpen && <IssueModal fields={fields} onClose={() => setIssueOpen(false)} onSubmit={createIssue} />}
     {edited && <EditModal field={edited} onClose={() => setEdited(undefined)} onSubmit={saveValue} />}
     {reminderOpen && <ReminderModal preview={reminderPreview} loading={loadingPreview} sending={sendingReminder} error={error} onClose={() => setReminderOpen(false)} onSend={sendReminder} />}
+    {incompleteValidationOpen && <IncompleteValidationModal fields={missingComplianceFields} validating={validating} error={error} onClose={() => setIncompleteValidationOpen(false)} onConfirm={() => void validateCompliance(true)} />}
   </>;
 }
 
@@ -184,12 +196,25 @@ function ReminderModal({ preview, loading, sending, error, onClose, onSend }: { 
   </Modal>;
 }
 
+function IncompleteValidationModal({ fields, validating, error, onClose, onConfirm }: { fields: EnrollmentDetail["fields"]; validating: boolean; error?: string; onClose: () => void; onConfirm: () => void }) {
+  return <Modal title="Valider un dossier incomplet" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose} disabled={validating}>Annuler</Button><Button onClick={onConfirm} disabled={validating}><Check size={15} />{validating ? "Validation…" : "Confirmer la validation"}</Button></>}>
+    {error && <div className="errorBanner" role="alert">{error}</div>}
+    <p className={styles.validationWarning}>Les champs suivants ne sont pas renseignés :</p>
+    <ul className={styles.missingFields}>{fields.map((field) => <li key={field.key}>{field.label}</li>)}</ul>
+    <p className={styles.hint}>En confirmant, le dossier sera marqué comme validé malgré ces informations manquantes.</p>
+  </Modal>;
+}
+
 function IssueModal({ fields, onClose, onSubmit }: { fields: EnrollmentDetail["fields"]; onClose: () => void; onSubmit: (input: IssueCreateInput) => Promise<void> }) {
   const [key, setKey] = useState(fields[0]?.key ?? ""); const [reason, setReason] = useState(""); const field = fields.find((item) => item.key === key);
   return <Modal title="Signaler une non-conformité" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button disabled={!field || reason.length < 3} onClick={() => field && void onSubmit({ fieldKey: field.key, fieldLabel: field.label, kind: field.kind === "DOCUMENT" ? "DOCUMENT" : "FIELD", reason })}>Ajouter</Button></>}><div className="field"><label>Information</label><select value={key} onChange={(event) => setKey(event.target.value)}>{fields.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></div><div className="field"><label>Motif</label><textarea value={reason} onChange={(event) => setReason(event.target.value)} /></div></Modal>;
 }
 
 function isHttpUrl(value: string) { try { const url = new URL(value); return url.protocol === "https:" || url.protocol === "http:"; } catch { return false; } }
+
+function isMedicalCertificateField(field: EnrollmentDetail["fields"][number]) {
+  return `${field.key} ${field.label}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").includes("certificat medical");
+}
 
 function EditModal({ field, onClose, onSubmit }: { field: { label: string; value: string }; onClose: () => void; onSubmit: (value: string) => Promise<void> }) {
   const [value, setValue] = useState(field.value);

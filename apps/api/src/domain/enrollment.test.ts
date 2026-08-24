@@ -41,6 +41,14 @@ describe("règles d’un dossier", () => {
     }))).toBe("INCOMPLET");
   });
 
+  it("conserve un dossier validé malgré des informations de conformité manquantes", () => {
+    expect(complianceStatus(enrollment({
+      sourceData: { identityPhoto: "" },
+      mappings: [{ id: "photo", sourceKey: "identityPhoto", label: "Photo", kind: "DOCUMENT", required: false, position: 1 }],
+      complianceValidatedAt: new Date(),
+    }))).toBe("VALIDE");
+  });
+
   it("normalise les réductions dans le résumé", () => {
     expect(toSummary(enrollment())).toMatchObject({ discountType: "Pass’Sport", discountCode: "PS-42" });
   });
