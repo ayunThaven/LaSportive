@@ -92,19 +92,29 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
   app.get("/api/v1/auth/session", { preHandler: authenticate }, async () => ({ authenticated: true, username: authUsername }));
 
   app.get("/api/v1/integrations/google-drive/authorize", { preHandler: authenticate }, async (_request, reply) => {
-    const state = randomUUID();
-    reply.setCookie("google_drive_oauth_state", state, { httpOnly: true, sameSite: "lax", secure: config.NODE_ENV === "production", path: "/", maxAge: 600 });
-    return reply.redirect(googleClient().generateAuthUrl({ access_type: "offline", prompt: "consent", state, scope: ["https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive.metadata.readonly"] }));
+    // OAuth starts from the web app, which is served from a different origin.
+    // A signed state keeps the callback protected without depending on a
+    // cross-origin session cookie during browser navigation.
+    const state = await reply.jwtSign({ purpose: "google-drive-oauth" }, { expiresIn: "10m" });
+    return {
+      authorizationUrl: googleClient().generateAuthUrl({ access_type: "offline", prompt: "consent", state, scope: ["https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive.metadata.readonly"] }),
+    };
   });
 
   app.get("/api/v1/integrations/google-drive/callback", async (request, reply) => {
     const query = request.query as { code?: string; state?: string; error?: string };
-    if (query.error || !query.code || query.state !== request.cookies.google_drive_oauth_state) return reply.status(400).send({ message: "Autorisation Google Drive refusée ou invalide." });
+    let state: { purpose?: string };
+    try {
+      if (!query.state) throw new Error("Missing OAuth state");
+      state = app.jwt.verify<{ purpose?: string }>(query.state);
+    } catch {
+      return reply.status(400).send({ message: "Autorisation Google Drive refusée ou invalide." });
+    }
+    if (query.error || !query.code || state.purpose !== "google-drive-oauth") return reply.status(400).send({ message: "Autorisation Google Drive refusée ou invalide." });
     const auth = googleClient();
     const { tokens } = await auth.getToken(query.code);
     if (!tokens.refresh_token) return reply.status(422).send({ message: "Google n’a pas fourni de jeton de connexion. Révoquez l’accès à l’application puis recommencez." });
     await repository.saveGoogleDriveConnection({ refreshToken: tokens.refresh_token });
-    reply.clearCookie("google_drive_oauth_state", { path: "/" });
     return reply.redirect(`${config.WEB_ORIGIN}/reglages?googleDrive=connected`);
   });
 

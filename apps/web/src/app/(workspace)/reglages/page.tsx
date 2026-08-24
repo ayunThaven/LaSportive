@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FieldMappingDto, HelloAssoCampaignDto, HelloAssoFieldDto, MappingKind, SettingsDto } from "@la-sportive/contracts";
 import { Check, CheckCircle2, CircleAlert, Cloud, DatabaseZap, GripVertical, Mail, RefreshCw, Settings2 } from "lucide-react";
 import { Button, Modal, Spinner } from "@/components/ui";
-import { API_URL, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import styles from "./settings.module.css";
 
 const modules = { CONFORMITE: "Conformité", LICENCES: "Licences", REDUCTIONS: "Comptabilité", AUTORISATIONS: "Autorisations" } as const;
@@ -60,7 +60,15 @@ export default function SettingsPage() {
   async function selectCampaign(formSlug: string) { const selected = campaigns.find((item) => item.formSlug === formSlug); if (!selected) return; try { await saveQueue.current; await persist(); const data = await api<SettingsDto>("/helloasso/campaigns/select", { method: "POST", body: JSON.stringify(selected) }); const next = data.campaigns.find((item) => item.id === data.activeCampaignId)?.mappings ?? []; mappingsRef.current = next; setSettings(data); setMappings(next); setFields([]); setTab("CAMPAIGN"); window.dispatchEvent(new Event("lasportive:refresh")); } catch (error) { setMessage(error instanceof Error ? error.message : "Sélection de campagne impossible."); } }
   async function testConnection() { setTesting(true); try { const result = await api<{ campaignCount: number }>("/integrations/helloasso/test", { method: "POST" }); setMessage(`Connexion HelloAsso opérationnelle · ${result.campaignCount} campagne(s) trouvée(s).`); } catch (error) { setMessage(error instanceof Error ? error.message : "Connexion HelloAsso impossible."); } finally { setTesting(false); } }
   async function loadDriveFolders() { setLoadingDriveFolders(true); try { const data = await api<{ data: DriveFolder[] }>("/integrations/google-drive/folders"); setDriveFolders(data.data); setSelectedDriveFolderId((current) => current || settings?.googleDrive?.folderId || ""); } catch (error) { setMessage(error instanceof Error ? error.message : "Impossible de charger les dossiers Google Drive."); } finally { setLoadingDriveFolders(false); } }
-  function configureDrive() { if (settings?.googleDrive?.connected) { setConfiguringDrive(true); return; } window.location.assign(`${API_URL}/integrations/google-drive/authorize`); }
+  async function configureDrive() {
+    if (settings?.googleDrive?.connected) { setConfiguringDrive(true); return; }
+    try {
+      const { authorizationUrl } = await api<{ authorizationUrl: string }>("/integrations/google-drive/authorize");
+      window.location.assign(authorizationUrl);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Configuration Google Drive impossible.");
+    }
+  }
   async function saveDriveFolder() { const folder = driveFolders.find((item) => item.id === selectedDriveFolderId); if (!folder) return; setSavingDriveFolder(true); try { setSettings(await api<SettingsDto>("/integrations/google-drive/folder", { method: "PUT", body: JSON.stringify(folder) })); setConfiguringDrive(false); setMessage("Dossier Google Drive configuré."); } catch (error) { setMessage(error instanceof Error ? error.message : "Configuration Google Drive impossible."); } finally { setSavingDriveFolder(false); } }
   async function resetConnection(connection: ResettingConnection) {
     const endpoints = { helloAsso: "/integrations/helloasso/session", googleDrive: "/integrations/google-drive" } as const;
