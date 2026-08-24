@@ -4,8 +4,8 @@ import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
 import { X } from "lucide-react";
 import styles from "./ui.module.css";
 
-export function Button({ variant = "primary", className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" }) {
-  return <button className={`${styles.button} ${styles[variant]} ${className}`} {...props} />;
+export function Button({ variant = "primary", className = "", type = "button", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" }) {
+  return <button type={type} className={`${styles.button} ${styles[variant]} ${className}`} {...props} />;
 }
 
 export function StatusPill({ status }: { status: string }) {
