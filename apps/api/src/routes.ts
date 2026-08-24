@@ -128,11 +128,6 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
     return repository.getSettings();
   });
 
-  app.delete("/api/v1/integrations/gmail/session", { preHandler: authenticate }, async () => {
-    mailer.resetConnection();
-    return repository.getSettings();
-  });
-
   app.get("/api/v1/enrollments", { preHandler: authenticate }, async (request) => {
     const query = request.query as { search?: string; status?: string };
     let items = (await repository.listEnrollments()).map(toSummary);

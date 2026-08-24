@@ -197,7 +197,7 @@ export class DemoRepository implements AppRepository {
       emailTemplate: this.emailTemplate,
       integrations: {
         helloAsso: Boolean(config.HELLOASSO_CLIENT_ID && config.HELLOASSO_CLIENT_SECRET) || config.DEMO_MODE,
-        smtp: Boolean(config.SMTP_HOST) || config.DEMO_MODE,
+        smtp: Boolean(config.BREVO_API_KEY) || config.DEMO_MODE,
         googleDrive: Boolean(config.GOOGLE_SERVICE_ACCOUNT_BASE64 && config.GOOGLE_DRIVE_FOLDER_ID) || config.DEMO_MODE,
       },
       syncRuns: this.syncRuns,

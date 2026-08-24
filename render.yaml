@@ -35,19 +35,11 @@ services:
         sync: false
       - key: HELLOASSO_CLIENT_SECRET
         sync: false
-      - key: SMTP_HOST
+      - key: BREVO_API_KEY
         sync: false
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_SECURE
-        value: "false"
-      - key: SMTP_USER
+      - key: EMAIL_FROM
         sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM
-        sync: false
-      - key: SMTP_REPLY_TO
+      - key: EMAIL_REPLY_TO
         sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_BASE64
         sync: false

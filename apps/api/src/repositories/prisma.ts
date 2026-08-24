@@ -136,7 +136,7 @@ export class PrismaRepository implements AppRepository {
       emailTemplate: setting.emailTemplate,
       integrations: {
         helloAsso: Boolean(config.HELLOASSO_CLIENT_ID && config.HELLOASSO_CLIENT_SECRET),
-        smtp: Boolean(config.SMTP_HOST),
+        smtp: Boolean(config.BREVO_API_KEY),
         googleDrive: Boolean(setting.googleDriveRefreshToken && setting.googleDriveFolderId),
       },
       googleDrive: { connected: Boolean(setting.googleDriveRefreshToken), folderId: setting.googleDriveFolderId ?? undefined, folderName: setting.googleDriveFolderName ?? undefined },

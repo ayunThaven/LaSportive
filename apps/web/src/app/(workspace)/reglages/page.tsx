@@ -13,7 +13,7 @@ const allReductionDevices = ["TOUS", ...reductionDevices] as const;
 type Module = keyof typeof modules;
 type SettingsTab = "CONNECTIONS" | "CAMPAIGN";
 type DropPosition = "before" | "after";
-type ResettingConnection = "helloAsso" | "googleDrive" | "gmail";
+type ResettingConnection = "helloAsso" | "googleDrive";
 type DriveFolder = { id: string; name: string };
 
 const moduleFor = (kind: MappingKind): Module => kind === "LICENCE" ? "LICENCES" : kind.startsWith("REDUCTION") || kind === "ACCOUNTING" ? "REDUCTIONS" : kind === "AUTORISATION" ? "AUTORISATIONS" : "CONFORMITE";
@@ -63,8 +63,8 @@ export default function SettingsPage() {
   function configureDrive() { if (settings?.googleDrive?.connected) { setConfiguringDrive(true); return; } window.location.assign(`${API_URL}/integrations/google-drive/authorize`); }
   async function saveDriveFolder() { const folder = driveFolders.find((item) => item.id === selectedDriveFolderId); if (!folder) return; setSavingDriveFolder(true); try { setSettings(await api<SettingsDto>("/integrations/google-drive/folder", { method: "PUT", body: JSON.stringify(folder) })); setConfiguringDrive(false); setMessage("Dossier Google Drive configuré."); } catch (error) { setMessage(error instanceof Error ? error.message : "Configuration Google Drive impossible."); } finally { setSavingDriveFolder(false); } }
   async function resetConnection(connection: ResettingConnection) {
-    const endpoints = { helloAsso: "/integrations/helloasso/session", googleDrive: "/integrations/google-drive", gmail: "/integrations/gmail/session" } as const;
-    const labels = { helloAsso: "HelloAsso", googleDrive: "Google Drive", gmail: "Gmail" } as const;
+    const endpoints = { helloAsso: "/integrations/helloasso/session", googleDrive: "/integrations/google-drive" } as const;
+    const labels = { helloAsso: "HelloAsso", googleDrive: "Google Drive" } as const;
     setResettingConnection(connection);
     try {
       const data = await api<SettingsDto | { ok: true }>(endpoints[connection], { method: "DELETE" });
@@ -114,7 +114,7 @@ export default function SettingsPage() {
     {tab === "CONNECTIONS" ? <section className={styles.connectionGrid}>
       <ConnectionCard icon={<Cloud />} title="HelloAsso" detail="Campagnes et adhésions" connected={settings.integrations.helloAsso}><Button variant="secondary" onClick={testConnection} disabled={testing || Boolean(resettingConnection)}>{testing ? "Test en cours…" : "Tester la connexion"}</Button><Button variant="ghost" onClick={() => resetConnection("helloAsso")} disabled={testing || Boolean(resettingConnection)}>{resettingConnection === "helloAsso" ? "Réinitialisation…" : "Réinitialiser"}</Button></ConnectionCard>
       <ConnectionCard icon={<DatabaseZap />} title="Google Drive" detail="Dépôt des documents corrigés" connected={settings.integrations.googleDrive}><Button variant="secondary" onClick={configureDrive} disabled={Boolean(resettingConnection)}>{settings.googleDrive?.connected ? "Choisir le dossier" : "Configuration Drive"}</Button><Button variant="ghost" onClick={() => resetConnection("googleDrive")} disabled={Boolean(resettingConnection)}>{resettingConnection === "googleDrive" ? "Réinitialisation…" : "Réinitialiser"}</Button></ConnectionCard>
-      <ConnectionCard icon={<Mail />} title="Gmail" detail="Envoi des relances adhérents" connected={settings.integrations.smtp}><Button variant="secondary" disabled>Configuration e-mail</Button><Button variant="ghost" onClick={() => resetConnection("gmail")} disabled={Boolean(resettingConnection)}>{resettingConnection === "gmail" ? "Réinitialisation…" : "Réinitialiser"}</Button></ConnectionCard>
+      <ConnectionCard icon={<Mail />} title="Brevo" detail="Envoi des relances adhérents par API HTTPS" connected={settings.integrations.smtp}><span className="muted">Clé API configurée dans Render</span></ConnectionCard>
     </section> : <section className={`card ${styles.campaignSection}`}>
       <div className={styles.campaignHeader}><div><small>CAMPAGNE ACTIVE</small><h2>{active?.title ?? "Aucune campagne"}</h2><p>Les modifications de sélection sont sauvegardées automatiquement.</p></div><Button variant="secondary" onClick={loadCampaigns} disabled={loadingCampaigns}><RefreshCw size={15} />{loadingCampaigns ? "Chargement…" : "Actualiser HelloAsso"}</Button></div>
       <div className="field"><label>Campagne d’adhésion</label><select value="" onChange={(event) => selectCampaign(event.target.value)} disabled={loadingCampaigns}><option value="">Sélectionnez une campagne…</option>{campaigns.map((campaign) => <option key={campaign.formSlug} value={campaign.formSlug}>{campaign.title}</option>)}</select></div>
