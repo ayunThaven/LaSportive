@@ -189,7 +189,7 @@ export class PrismaRepository implements AppRepository {
     await prisma.enrollment.upsert({
       where: { externalItemId: input.externalItemId },
       create: input,
-      update: { ...input, complianceValidatedAt: existing && JSON.stringify(existing.sourceData) !== JSON.stringify(input.sourceData) ? null : existing?.complianceValidatedAt, licenseStatus: existing && JSON.stringify(existing.sourceData) !== JSON.stringify(input.sourceData) ? "A_TRAITER" : existing?.licenseStatus, licenseProcessedAt: existing && JSON.stringify(existing.sourceData) !== JSON.stringify(input.sourceData) ? null : existing?.licenseProcessedAt },
+      update: { ...input, complianceValidatedAt: existing?.complianceValidatedAt, licenseStatus: existing && JSON.stringify(existing.sourceData) !== JSON.stringify(input.sourceData) ? "A_TRAITER" : existing?.licenseStatus, licenseProcessedAt: existing && JSON.stringify(existing.sourceData) !== JSON.stringify(input.sourceData) ? null : existing?.licenseProcessedAt },
     });
     return existing ? "updated" : "imported";
   }

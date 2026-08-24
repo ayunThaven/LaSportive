@@ -242,8 +242,7 @@ export class DemoRepository implements AppRepository {
   async upsertSourceEnrollment(input: SourceEnrollment) {
     const existing = this.enrollments.find((item) => item.externalItemId === input.externalItemId);
     if (existing) {
-      const changed = JSON.stringify(existing.sourceData) !== JSON.stringify(input.sourceData);
-      Object.assign(existing, input, { complianceValidatedAt: changed ? undefined : existing.complianceValidatedAt, updatedAt: new Date() });
+      Object.assign(existing, input, { complianceValidatedAt: existing.complianceValidatedAt, updatedAt: new Date() });
       return "updated" as const;
     }
     this.enrollments.push(record({ id: randomUUID(), ...input }));
