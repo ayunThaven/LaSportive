@@ -14,6 +14,8 @@ enum MappingKind {
   DOCUMENT
   REDUCTION_TYPE
   REDUCTION_CODE
+  ACCOUNTING
+  AUTORISATION
 }
 
 enum ComplianceIssueStatus {

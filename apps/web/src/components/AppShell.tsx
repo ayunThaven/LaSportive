@@ -3,7 +3,7 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BadgeCheck, BadgePercent, CodeXml, FileCheck2, LogOut, Menu, RefreshCw, Settings, X } from "lucide-react";
+import { BadgeCheck, BadgePercent, CodeXml, FileCheck2, LogOut, Menu, RefreshCw, Settings, ShieldCheck, X } from "lucide-react";
 import type { SettingsDto } from "@la-sportive/contracts";
 import { api } from "@/lib/api";
 import { Button, Modal, Spinner } from "./ui";
@@ -13,8 +13,11 @@ import jsonStyles from "./AppShellJson.module.css";
 const navigation = [
   { href: "/conformite", label: "Conformité", icon: FileCheck2 },
   { href: "/licences", label: "Licences", icon: BadgeCheck },
-  { href: "/reductions", label: "Réductions", icon: BadgePercent },
+  { href: "/reductions", label: "Comptabilité", icon: BadgePercent },
+  { href: "/autorisations", label: "Autorisations", icon: ShieldCheck },
 ];
+
+const showRawJson = process.env.NODE_ENV !== "production";
 
 export function AppShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
@@ -96,14 +99,14 @@ export function AppShell({ children }: PropsWithChildren) {
         <header className={styles.topbar}>
           <div><span className={styles.seasonDot}/><strong>{season}</strong><small>{campaignLabel}</small></div>
           <section className={jsonStyles.topbarActions}>
-            <Button variant="ghost" onClick={showRawHelloAsso} disabled={syncing || loadingRawJson}><CodeXml size={16}/>{loadingRawJson ? "Chargement…" : "Voir le JSON"}</Button>
+            {showRawJson && <Button variant="ghost" onClick={showRawHelloAsso} disabled={syncing || loadingRawJson}><CodeXml size={16}/>{loadingRawJson ? "Chargement…" : "Voir le JSON"}</Button>}
             <Button variant="secondary" onClick={synchronize} disabled={syncing || loadingRawJson}><RefreshCw size={16} className={syncing ? styles.spin : ""}/>{syncing ? "Synchronisation…" : "Actualiser HelloAsso"}</Button>
           </section>
         </header>
         {message && <div className={styles.toast}>{message}</div>}
         <div className={styles.content}>{children}</div>
       </main>
-      {rawHelloAsso !== undefined && <Modal title="JSON reçu de HelloAsso" onClose={() => setRawHelloAsso(undefined)} footer={<Button variant="secondary" onClick={() => setRawHelloAsso(undefined)}>Fermer</Button>}>
+      {showRawJson && rawHelloAsso !== undefined && <Modal title="JSON reçu de HelloAsso" onClose={() => setRawHelloAsso(undefined)} footer={<Button variant="secondary" onClick={() => setRawHelloAsso(undefined)}>Fermer</Button>}>
         <p className={jsonStyles.hint}>Données brutes de la campagne active. Elles peuvent contenir des informations personnelles.</p>
         <pre className={jsonStyles.content}>{JSON.stringify(rawHelloAsso, null, 2)}</pre>
       </Modal>}
