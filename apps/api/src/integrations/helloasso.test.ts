@@ -10,13 +10,14 @@ const campaign: CampaignRecord = {
 describe("normalisation HelloAsso", () => {
   afterEach(() => HelloAssoClient.resetTokenCacheForTests());
   it("crée un dossier par participant et utilise le champ de contact mappé", () => {
-    const result = normalizeHelloAssoOrders([{ id: 90, state: "Processed", payer: { email: "payeur@example.org" }, items: [
+    const result = normalizeHelloAssoOrders([{ id: 90, state: "Processed", payer: { email: "payeur@example.org", firstName: "Camille", lastName: "Martin" }, items: [
       { id: 1, user: { firstName: "Lina", lastName: "Petit" }, customFields: [{ id: "contact-parent", name: "E-mail de contact", answer: "parent@example.org" }] },
       { id: 2, user: { firstName: "Noé", lastName: "Petit" }, customFields: [{ id: "contact-parent", answer: "parent@example.org" }] },
     ] }], campaign);
     expect(result).toHaveLength(2);
     expect(result.map((item) => item.externalItemId)).toEqual(["1", "2"]);
     expect(result.every((item) => item.contactEmail === "parent@example.org")).toBe(true);
+    expect(result.every((item) => item.sourceData.payerFirstName === "Camille" && item.sourceData.payerLastName === "Martin")).toBe(true);
   });
 
   it("utilise l’e-mail du payeur et les libellés de questions lorsque les IDs changent", () => {

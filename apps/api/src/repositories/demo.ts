@@ -87,7 +87,7 @@ function record(input: Partial<EnrollmentRecord> & Pick<EnrollmentRecord, "id" |
 export class DemoRepository implements AppRepository {
   private campaigns = [campaign, archivedCampaign];
   private emailSubject = "Votre inscription nécessite une correction";
-  private emailTemplate = "Bonjour {{prenom}},\n\nNous avons vérifié votre inscription. Merci de répondre à ce message avec les corrections suivantes :\n\n{{anomalies}}\n\nBien sportivement,\nLa Sportive";
+  private emailTemplate = "Bonjour {{payeur}},\n\nNous vous contactons concernant l’adhésion de {{adherent}}.\n\nAprès examen du dossier, certaines informations ou pièces justificatives doivent être complétées afin de finaliser l’adhésion :\n\n{{anomalies}}\n\nNous vous remercions de bien vouloir répondre à cet e-mail en nous transmettant les éléments demandés.\n\nCordialement,\n\nL’équipe La Sportive";
   private syncRuns: SettingsDto["syncRuns"] = [
     { id: "sync-1", status: "SUCCESS", imported: 42, updated: 3, startedAt: new Date(now.getTime() - 12 * 60_000).toISOString(), finishedAt: new Date(now.getTime() - 11 * 60_000).toISOString() },
   ];

@@ -138,6 +138,8 @@ export function normalizeHelloAssoOrders(orders: unknown[], campaign: CampaignRe
         ...fields,
         firstName,
         lastName,
+        payerFirstName: text(payer.firstName ?? payer.firstname ?? payer.givenName),
+        payerLastName: text(payer.lastName ?? payer.lastname ?? payer.familyName),
         // Semantic aliases keep existing mappings working while the source
         // remains the question label, not an ID regenerated with a new form.
         birthDate: firstFieldValue(fields, "birthDate", "Date de naissance"),

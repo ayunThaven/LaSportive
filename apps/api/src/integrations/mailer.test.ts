@@ -16,18 +16,21 @@ describe("Mailer", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { Mailer } = await import("./mailer.js");
-    await new Mailer().send({ to: "adhérent@example.org", subject: "Dossier à compléter", text: "Bonjour" });
+    await new Mailer().send({ to: "adhérent@example.org", subject: "Dossier à compléter", text: "Bonjour\n\n• Document <à joindre>" });
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.brevo.com/v3/smtp/email");
     expect(options.headers).toMatchObject({ "api-key": "brevo-test-key", "content-type": "application/json" });
-    expect(JSON.parse(options.body as string)).toMatchObject({
+    const payload = JSON.parse(options.body as string);
+    expect(payload).toMatchObject({
       sender: { name: "La Sportive", email: "contact@lasportive.test" },
       replyTo: { email: "contact@lasportive.test" },
       to: [{ email: "adhérent@example.org" }],
       subject: "Dossier à compléter",
-      textContent: "Bonjour",
+      textContent: "Bonjour\n\n• Document <à joindre>",
     });
+    expect(payload.htmlContent).toContain("La Sportive");
+    expect(payload.htmlContent).toContain("Document &lt;à joindre&gt;");
   });
 });

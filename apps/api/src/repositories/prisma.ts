@@ -126,7 +126,7 @@ export class PrismaRepository implements AppRepository {
   async getSettings(): Promise<SettingsDto> {
     const [campaigns, setting, syncRuns] = await Promise.all([
       prisma.campaign.findMany({ include: { mappings: { orderBy: { position: "asc" } } }, orderBy: { createdAt: "desc" } }),
-      prisma.appSetting.upsert({ where: { id: "singleton" }, create: { emailTemplate: "Bonjour {{prenom}},\n\nMerci de corriger :\n{{anomalies}}\n\nBien sportivement,\nLa Sportive" }, update: {} }),
+      prisma.appSetting.upsert({ where: { id: "singleton" }, create: { emailTemplate: "Bonjour {{payeur}},\n\nNous vous contactons concernant l’adhésion de {{adherent}}.\n\nAprès examen du dossier, certaines informations ou pièces justificatives doivent être complétées afin de finaliser l’adhésion :\n\n{{anomalies}}\n\nNous vous remercions de bien vouloir répondre à cet e-mail en nous transmettant les éléments demandés.\n\nCordialement,\n\nL’équipe La Sportive" }, update: {} }),
       prisma.syncRun.findMany({ orderBy: { startedAt: "desc" }, take: 10 }),
     ]);
     return {

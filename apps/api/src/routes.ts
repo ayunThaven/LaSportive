@@ -25,6 +25,10 @@ function fillTemplate(template: string, data: Record<string, string>) {
   return template.replace(/{{(\w+)}}/g, (_match, key: string) => data[key] ?? "");
 }
 
+function displayName(...values: string[]) {
+  return values.map((value) => value.trim()).filter(Boolean).join(" ");
+}
+
 export async function registerRoutes(app: FastifyInstance, repository: AppRepository) {
   const mailer = new Mailer();
   const drive = new DriveStorage(repository);
@@ -50,13 +54,17 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
     const openIssues = enrollment.issues.filter((issue) => issue.status !== "CONFORME");
     if (openIssues.length === 0) throw new Error("Aucune anomalie ouverte à relancer.");
     const settings = await repository.getSettings();
+    const payerFirstName = enrollment.sourceData.payerFirstName || effective.firstName;
+    const payerLastName = enrollment.sourceData.payerLastName || effective.lastName;
     return {
       enrollment,
       recipient: effective.contactEmail,
       subject: settings.emailSubject,
       body: fillTemplate(settings.emailTemplate, {
-        prenom: effective.firstName,
-        nom: effective.lastName,
+        prenom: payerFirstName,
+        nom: payerLastName,
+        payeur: displayName(payerFirstName, payerLastName),
+        adherent: displayName(effective.firstName, effective.lastName),
         anomalies: openIssues.map((issue) => `• ${issue.fieldLabel} : ${issue.reason}`).join("\n"),
       }),
     };
