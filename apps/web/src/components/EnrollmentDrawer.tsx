@@ -21,6 +21,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
   const [uploadingIssueId, setUploadingIssueId] = useState<string>();
   const [validatingDocumentId, setValidatingDocumentId] = useState<string>();
   const [resolvingIssueId, setResolvingIssueId] = useState<string>();
+  const [unchangedFieldIssue, setUnchangedFieldIssue] = useState<{ id: string; label: string }>();
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [validating, setValidating] = useState(false);
@@ -107,6 +108,15 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
     }
   }
 
+  function requestFieldIssueValidation(issue: EnrollmentDetail["issues"][number]) {
+    const field = detail?.fields.find((item) => item.key === issue.fieldKey);
+    if (field && field.value === field.sourceValue) {
+      setUnchangedFieldIssue({ id: issue.id, label: issue.fieldLabel });
+      return;
+    }
+    void resolveFieldIssue(issue.id, issue.fieldLabel);
+  }
+
   async function openReminder() {
     setError(undefined); setNotice(undefined); setReminderOpen(true); setReminderPreview(undefined); setLoadingPreview(true);
     try {
@@ -167,7 +177,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
             {module === "CONFORMITE" && <div className="toolbar">{["INCOMPLET", "A_VALIDER", "VERIF_CERTIFICAT"].includes(detail.complianceStatus) && <Button onClick={requestComplianceValidation} disabled={validating}><Check size={15} />{validating ? "Validation…" : "Valider le dossier"}</Button>}<Button variant="ghost" onClick={() => setIssueOpen(true)}><Plus size={15} />Signaler</Button></div>}
           </div>
           {module === "CONFORMITE" && <div style={{ marginBottom: ".8rem" }}><StatusPill status={detail.complianceStatus} /></div>}
-          {fields.length === 0 ? <p className={styles.noIssue}>Aucun champ configuré pour ce module.</p> : <div className={styles.fields}>{fields.map((field) => <div className={styles.fieldRow} key={`${field.kind}-${field.key}`}><div><span>{field.label}{field.required && <b>*</b>}</span>{field.kind === "DOCUMENT" && isHttpUrl(field.value) ? <a href={field.value} target="_blank" rel="noreferrer"><FileText size={15} />Ouvrir le document<ExternalLink size={13} /></a> : <strong className={!field.value ? styles.missing : ""}>{field.value || "Non renseigné"}</strong>}</div><button onClick={() => setEdited({ key: field.key, label: field.label, value: field.value })}><Pencil size={15} /></button></div>)}</div>}
+          {fields.length === 0 ? <p className={styles.noIssue}>Aucun champ configuré pour ce module.</p> : <div className={styles.fields}>{fields.map((field) => <div className={styles.fieldRow} key={`${field.kind}-${field.key}`}><div><span>{field.label}{field.required && <b>*</b>}</span>{isDocumentUrl(field.value) ? <a href={field.value} target="_blank" rel="noreferrer"><FileText size={15} />Ouvrir le document<ExternalLink size={13} /></a> : <strong className={!field.value ? styles.missing : ""}>{field.value || "Non renseigné"}</strong>}</div><button onClick={() => setEdited({ key: field.key, label: field.label, value: field.value })}><Pencil size={15} /></button></div>)}</div>}
         </section>
         <section className={styles.section}>
           <div className={styles.sectionTitle}><div><small>CONFORMITÉ</small><h3>Anomalies</h3></div>{module === "CONFORMITE" && issues.length > 0 && <Button variant="secondary" onClick={openReminder}><Mail size={15} />Envoyer l’e-mail</Button>}</div>
@@ -175,7 +185,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
             <div className={styles.issueHead}><strong>{issue.fieldLabel}</strong><StatusPill status={issue.status} /></div>
             <p>{issue.reason}</p>
             {issue.kind === "DOCUMENT" && issue.status !== "CONFORME" && <label className={styles.upload}><FileUp size={15} />{uploadingIssueId === issue.id ? "Dépôt en cours…" : "Déposer la correction"}<input type="file" disabled={Boolean(uploadingIssueId)} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void upload(issue.id, file); }} /></label>}
-            {issue.kind === "FIELD" && issue.status !== "CONFORME" && <div className={styles.fieldIssueActions}><Button variant="secondary" disabled={Boolean(resolvingIssueId)} onClick={() => void resolveFieldIssue(issue.id, issue.fieldLabel)}><Check size={15} />{resolvingIssueId === issue.id ? "Mise à jour…" : "Marquer comme conforme"}</Button><small>Après vérification ou correction de la valeur ci-dessus.</small></div>}
+            {issue.kind === "FIELD" && issue.status !== "CONFORME" && <div className={styles.fieldIssueActions}><Button variant="secondary" disabled={Boolean(resolvingIssueId)} onClick={() => requestFieldIssueValidation(issue)}><Check size={15} />{resolvingIssueId === issue.id ? "Validation…" : "Valider la correction"}</Button><small>Après vérification ou correction de la valeur ci-dessus.</small></div>}
             {issue.documents.length > 0 && <div className={styles.documents}>{issue.documents.map((document) => <div className={styles.document} key={document.id}><a href={document.driveUrl} target="_blank" rel="noreferrer"><FileText size={15} /><span>{document.name}<small>Déposé le {formatDate(document.createdAt, true)}</small></span><ExternalLink size={13} /></a>{issue.status === "CORRECTION_RECUE" && <Button variant="secondary" disabled={Boolean(validatingDocumentId)} onClick={() => void validateDocumentCorrection(issue.id, document.id, document.name)}><Check size={15} />{validatingDocumentId === document.id ? "Validation…" : "Valider cette correction"}</Button>}</div>)}</div>}
           </article>)}
           {detail.reminders.length > 0 && <div className={styles.reminders}><strong>Derniers e-mails envoyés</strong>{detail.reminders.slice(0, 3).map((reminder) => <div className={styles.reminder} key={reminder.id}><Mail size={15} /><span><b>{reminder.status === "SENT" ? "E-mail envoyé" : "Échec d’envoi"}</b><small>{formatDate(reminder.sentAt, true)} · {reminder.recipient}</small></span></div>)}</div>}
@@ -186,6 +196,7 @@ export function EnrollmentDrawer({ enrollmentId, onClose, onChanged, module = "C
     {edited && <EditModal field={edited} onClose={() => setEdited(undefined)} onSubmit={saveValue} />}
     {reminderOpen && <ReminderModal preview={reminderPreview} loading={loadingPreview} sending={sendingReminder} error={error} onClose={() => setReminderOpen(false)} onSend={sendReminder} />}
     {incompleteValidationOpen && <IncompleteValidationModal fields={missingComplianceFields} validating={validating} error={error} onClose={() => setIncompleteValidationOpen(false)} onConfirm={() => void validateCompliance(true)} />}
+    {unchangedFieldIssue && <UnchangedFieldIssueModal fieldLabel={unchangedFieldIssue.label} validating={resolvingIssueId === unchangedFieldIssue.id} onClose={() => setUnchangedFieldIssue(undefined)} onConfirm={() => { void resolveFieldIssue(unchangedFieldIssue.id, unchangedFieldIssue.label); setUnchangedFieldIssue(undefined); }} />}
   </>;
 }
 
@@ -205,12 +216,19 @@ function IncompleteValidationModal({ fields, validating, error, onClose, onConfi
   </Modal>;
 }
 
-function IssueModal({ fields, onClose, onSubmit }: { fields: EnrollmentDetail["fields"]; onClose: () => void; onSubmit: (input: IssueCreateInput) => Promise<void> }) {
-  const [key, setKey] = useState(fields[0]?.key ?? ""); const [reason, setReason] = useState(""); const field = fields.find((item) => item.key === key);
-  return <Modal title="Signaler une non-conformité" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button disabled={!field || reason.length < 3} onClick={() => field && void onSubmit({ fieldKey: field.key, fieldLabel: field.label, kind: field.kind === "DOCUMENT" ? "DOCUMENT" : "FIELD", reason })}>Ajouter</Button></>}><div className="field"><label>Information</label><select value={key} onChange={(event) => setKey(event.target.value)}>{fields.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></div><div className="field"><label>Motif</label><textarea value={reason} onChange={(event) => setReason(event.target.value)} /></div></Modal>;
+function UnchangedFieldIssueModal({ fieldLabel, validating, onClose, onConfirm }: { fieldLabel: string; validating: boolean; onClose: () => void; onConfirm: () => void }) {
+  return <Modal title="Information non modifiée" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose} disabled={validating}>Annuler</Button><Button onClick={onConfirm} disabled={validating}><Check size={15} />{validating ? "Validation…" : "Valider quand même"}</Button></>}>
+    <p>La valeur de « {fieldLabel} » est identique à celle reçue lors de l’inscription.</p>
+    <p className={styles.hint}>Voulez-vous tout de même considérer cette anomalie comme corrigée ?</p>
+  </Modal>;
 }
 
-function isHttpUrl(value: string) { try { const url = new URL(value); return url.protocol === "https:" || url.protocol === "http:"; } catch { return false; } }
+function IssueModal({ fields, onClose, onSubmit }: { fields: EnrollmentDetail["fields"]; onClose: () => void; onSubmit: (input: IssueCreateInput) => Promise<void> }) {
+  const [key, setKey] = useState(fields[0]?.key ?? ""); const [reason, setReason] = useState(""); const field = fields.find((item) => item.key === key);
+  return <Modal title="Signaler une non-conformité" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button disabled={!field || reason.length < 3} onClick={() => field && void onSubmit({ fieldKey: field.key, fieldLabel: field.label, kind: isDocumentUrl(field.value) ? "DOCUMENT" : "FIELD", reason })}>Ajouter</Button></>}><div className="field"><label>Information</label><select value={key} onChange={(event) => setKey(event.target.value)}>{fields.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></div><div className="field"><label>Motif</label><textarea value={reason} onChange={(event) => setReason(event.target.value)} /></div></Modal>;
+}
+
+function isDocumentUrl(value: string) { try { const hostname = new URL(value).hostname.toLowerCase(); return hostname.startsWith("docs.helloasso.") || hostname === "drive.google.com" || hostname.endsWith(".drive.google.com"); } catch { return false; } }
 
 function isMedicalCertificateField(field: EnrollmentDetail["fields"][number]) {
   return `${field.key} ${field.label}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").includes("certificat medical");

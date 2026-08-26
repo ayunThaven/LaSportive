@@ -170,7 +170,10 @@ export async function registerRoutes(app: FastifyInstance, repository: AppReposi
   });
 
   app.post<{ Params: Pick<Params, "id"> }>("/api/v1/enrollments/:id/issues", { preHandler: authenticate }, async (request, reply) => {
-    const issue = await repository.createIssue(request.params.id, issueCreateSchema.parse(request.body));
+    const input = issueCreateSchema.parse(request.body);
+    const enrollment = await repository.getEnrollment(request.params.id);
+    if (!enrollment) return reply.status(404).send({ message: "Adhérent introuvable." });
+    const issue = await repository.createIssue(request.params.id, { ...input, kind: issueRequiresDocument(enrollment, input) ? "DOCUMENT" : "FIELD" });
     return reply.status(201).send(issue);
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { complianceStatus, effectiveFields, licenseReady, toDetail, toSummary } from "./enrollment.js";
+import { complianceStatus, effectiveFields, issueRequiresDocument, licenseReady, toDetail, toSummary } from "./enrollment.js";
 import type { EnrollmentRecord } from "./types.js";
 
 function enrollment(patch: Partial<EnrollmentRecord> = {}): EnrollmentRecord {
@@ -32,6 +32,12 @@ describe("règles d’un dossier", () => {
   it("applique le parcours de champ aux anciennes anomalies enregistrées comme document", () => {
     const detail = toDetail(enrollment({ issues: [{ id: "issue", fieldKey: "birthDate", fieldLabel: "Date", kind: "DOCUMENT", reason: "Incorrecte", status: "RELANCE", updatedAt: new Date(), documents: [] }] }));
     expect(detail.issues[0].kind).toBe("FIELD");
+  });
+
+  it("considère comme documents uniquement les liens HelloAsso Docs ou Google Drive", () => {
+    expect(issueRequiresDocument(enrollment({ sourceData: { proof: "https://docs.helloasso.com/proof.pdf" } }), { fieldKey: "proof" })).toBe(true);
+    expect(issueRequiresDocument(enrollment({ sourceData: { proof: "https://drive.google.com/file/d/proof/view" } }), { fieldKey: "proof" })).toBe(true);
+    expect(issueRequiresDocument(enrollment({ sourceData: { proof: "contact@example.org" }, mappings: [{ id: "proof", sourceKey: "proof", label: "Justificatif", kind: "DOCUMENT", required: false, position: 1 }] }), { fieldKey: "proof" })).toBe(false);
   });
 
   it("marque incomplet un dossier dont une information de conformité est vide", () => {

@@ -33,14 +33,15 @@ export function effectiveFields(record: EnrollmentRecord): EffectiveField[] {
     .sort((a, b) => a.position - b.position);
 }
 
-/**
- * The field mapping is the source of truth for the correction workflow.
- * Older issues may have been saved with kind DOCUMENT regardless of the
- * mapped field type, so only an explicitly mapped document can require a
- * file upload.
- */
-export function issueRequiresDocument(record: Pick<EnrollmentRecord, "mappings">, issue: Pick<IssueRecord, "fieldKey">): boolean {
-  return record.mappings.some((mapping) => mapping.sourceKey === issue.fieldKey && mapping.kind === "DOCUMENT");
+/** A correction is a document only when the submitted value points to the supported document providers. */
+export function issueRequiresDocument(record: Pick<EnrollmentRecord, "sourceData" | "overrides">, issue: Pick<IssueRecord, "fieldKey">): boolean {
+  const value = record.overrides[issue.fieldKey] ?? record.sourceData[issue.fieldKey] ?? "";
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname.startsWith("docs.helloasso.") || hostname === "drive.google.com" || hostname.endsWith(".drive.google.com");
+  } catch {
+    return false;
+  }
 }
 
 export function complianceStatus(record: EnrollmentRecord): ComplianceStatus {

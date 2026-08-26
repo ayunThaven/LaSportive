@@ -17,7 +17,7 @@ type ResettingConnection = "helloAsso" | "googleDrive";
 type DriveFolder = { id: string; name: string };
 
 const moduleFor = (kind: MappingKind): Module => kind === "LICENCE" ? "LICENCES" : kind.startsWith("REDUCTION") || kind === "ACCOUNTING" ? "REDUCTIONS" : kind === "AUTORISATION" ? "AUTORISATIONS" : "CONFORMITE";
-const mappingKindFor = (module: Module, device?: string): MappingKind => module === "LICENCES" ? "LICENCE" : module === "REDUCTIONS" ? (device === "TOUS" ? "ACCOUNTING" : "REDUCTION_CODE") : module === "AUTORISATIONS" ? "AUTORISATION" : "DOCUMENT";
+const mappingKindFor = (module: Module, device?: string): MappingKind => module === "LICENCES" ? "LICENCE" : module === "REDUCTIONS" ? (device === "TOUS" ? "ACCOUNTING" : "REDUCTION_CODE") : module === "AUTORISATIONS" ? "AUTORISATION" : "IDENTITE";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsDto>();

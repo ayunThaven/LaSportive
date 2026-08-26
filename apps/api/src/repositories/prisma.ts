@@ -84,9 +84,9 @@ export class PrismaRepository implements AppRepository {
 
   async addDocument(issueId: string, document: { driveFileId: string; driveUrl: string; name: string; mimeType: string }) {
     await prisma.$transaction(async (tx) => {
-      const issue = await tx.complianceIssue.findUnique({ where: { id: issueId }, include: { enrollment: { include: { campaign: { include: { mappings: true } } } } } });
+      const issue = await tx.complianceIssue.findUnique({ where: { id: issueId }, include: { enrollment: { include: { overrides: true } } } });
       if (!issue) throw new Error("Anomalie introuvable");
-      if (!issueRequiresDocument({ mappings: issue.enrollment.campaign.mappings.map(mappingDto) }, issue)) throw new Error("Un dépôt de correction est réservé aux anomalies de document.");
+      if (!issueRequiresDocument({ sourceData: issue.enrollment.sourceData as Record<string, string>, overrides: Object.fromEntries(issue.enrollment.overrides.map((item) => [item.fieldKey, item.value])) }, issue)) throw new Error("Un dépôt de correction est réservé aux anomalies de document.");
       await tx.driveDocument.create({ data: { issueId, ...document } });
       await tx.complianceIssue.update({ where: { id: issueId }, data: { status: "CORRECTION_RECUE" } });
     });
@@ -94,10 +94,10 @@ export class PrismaRepository implements AppRepository {
 
   async validateDocumentCorrection(issueId: string, documentId: string) {
     await prisma.$transaction(async (tx) => {
-      const issue = await tx.complianceIssue.findUnique({ where: { id: issueId }, include: { documents: { where: { id: documentId } }, enrollment: { include: { campaign: { include: { mappings: true } } } } } });
+      const issue = await tx.complianceIssue.findUnique({ where: { id: issueId }, include: { documents: { where: { id: documentId } }, enrollment: { include: { overrides: true } } } });
       const document = issue?.documents[0];
       if (!issue || !document) throw new Error("Correction introuvable");
-      if (!issueRequiresDocument({ mappings: issue.enrollment.campaign.mappings.map(mappingDto) }, issue)) throw new Error("Cette anomalie ne concerne pas un document.");
+      if (!issueRequiresDocument({ sourceData: issue.enrollment.sourceData as Record<string, string>, overrides: Object.fromEntries(issue.enrollment.overrides.map((item) => [item.fieldKey, item.value])) }, issue)) throw new Error("Cette anomalie ne concerne pas un document.");
       await tx.fieldOverride.upsert({
         where: { enrollmentId_fieldKey: { enrollmentId: issue.enrollmentId, fieldKey: issue.fieldKey } },
         create: { enrollmentId: issue.enrollmentId, fieldKey: issue.fieldKey, value: document.driveUrl },
