@@ -191,6 +191,6 @@ Les fichiers `.env` locaux ne doivent jamais être ajoutés au dépôt ou inclus
 
 ## Licence
 
-Ce projet est publié à des fins de consultation et de présentation.
+Ce projet est publié à des fins de consultation et de présentation. Son code n’est pas distribué sous licence open source.
 
-**All Rights Reserved — Tous droits réservés.**
+**All Rights Reserved — Tous droits réservés.** Voir [`LICENSE`](LICENSE).
