@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
+import { LegalLinks } from "@/components/LegalLinks";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -34,12 +35,13 @@ export default function LoginPage() {
         <div className={styles.lock}><LockKeyhole/></div>
         <p className={styles.kicker}>ESPACE ASSOCIATION</p>
         <h2>Heureux de vous revoir</h2>
-        <p className={styles.intro}>Connectez-vous avec le compte partagé de l’association.</p>
+        <p className={styles.intro}>Accès réservé aux membres du bureau. Connectez-vous avec le compte partagé de l’association.</p>
         {error && <div className={styles.error}>{error}</div>}
         <label>Identifiant<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
         <label>Mot de passe<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••" minLength={8} required /></label>
         <Button type="submit" disabled={loading}>{loading ? "Connexion…" : <>Se connecter <ArrowRight size={18}/></>}</Button>
         <small className={styles.help}>Un souci d’accès ? Contactez l’administrateur de l’association.</small>
+        <LegalLinks />
       </form>
     </section>
   </main>;

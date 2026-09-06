@@ -7,6 +7,7 @@ import { BadgeCheck, BadgePercent, CodeXml, FileCheck2, LogOut, Menu, RefreshCw,
 import type { SettingsDto } from "@la-sportive/contracts";
 import { api } from "@/lib/api";
 import { Button, Modal, Spinner } from "./ui";
+import { LegalLinks } from "./LegalLinks";
 import styles from "./AppShell.module.css";
 import jsonStyles from "./AppShellJson.module.css";
 
@@ -105,6 +106,7 @@ export function AppShell({ children }: PropsWithChildren) {
         </header>
         {message && <div className={styles.toast}>{message}</div>}
         <div className={styles.content}>{children}</div>
+        <footer><LegalLinks /></footer>
       </main>
       {showRawJson && rawHelloAsso !== undefined && <Modal title="JSON reçu de HelloAsso" onClose={() => setRawHelloAsso(undefined)} footer={<Button variant="secondary" onClick={() => setRawHelloAsso(undefined)}>Fermer</Button>}>
         <p className={jsonStyles.hint}>Données brutes de la campagne active. Elles peuvent contenir des informations personnelles.</p>
