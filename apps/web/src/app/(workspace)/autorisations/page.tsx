@@ -15,6 +15,10 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").toLocaleLowerCase("fr").trim();
 }
 
+function formatName(value: string) {
+  return value.trim().toLocaleLowerCase("fr").replace(/(^|[\s'’\p{Pd}])\p{L}/gu, (letter) => letter.toLocaleUpperCase("fr"));
+}
+
 function displayValue(value: string) {
   const normalized = normalize(value);
   const pill = (label: string, color: string, background: string) => <span style={{ display: "inline-flex", padding: ".22rem .55rem", borderRadius: 999, color, background, fontSize: ".78rem", fontWeight: 800 }}>{label}</span>;
@@ -45,7 +49,7 @@ function fieldMatching(item: AuthorizationRowDto, predicate: (label: string) => 
 }
 
 function PrintTable({ rows }: { rows: PrintRow[] }) {
-  return <table className={styles.printTable}><thead><tr><th>Adhérent</th><th>Contacts d&apos;urgence</th><th>Sortie</th><th>Droit à l&apos;image</th><th>Soins</th><th>Transport</th></tr></thead><tbody>{rows.map(({ item, emergency, outing, image, care, transport }) => <tr key={item.id}><td>{item.firstName} {item.lastName}</td><td className={styles.emergencyContact}>{emergency.length ? emergency.map((parts, index) => <div className={styles.contactEntry} key={index}>{parts.map((part, partIndex) => part.kind === "phone" ? <strong className={styles.contactPhone} key={partIndex}>{part.value}</strong> : <span key={partIndex}>{part.value}</span>)}</div>) : "Aucun"}</td><td className={styles.mark}>{outing}</td><td className={styles.mark}>{image}</td><td className={styles.mark}>{care}</td><td className={styles.mark}>{transport}</td></tr>)}</tbody></table>;
+  return <table className={styles.printTable}><thead><tr><th>Adhérent</th><th>Contacts d&apos;urgence</th><th>Sortie</th><th>Droit à l&apos;image</th><th>Soins</th><th>Transport</th></tr></thead><tbody>{rows.map(({ item, emergency, outing, image, care, transport }) => <tr key={item.id}><td>{formatName(item.firstName)} {formatName(item.lastName)}</td><td className={styles.emergencyContact}>{emergency.length ? emergency.map((parts, index) => <div className={styles.contactEntry} key={index}>{parts.map((part, partIndex) => part.kind === "phone" ? <strong className={styles.contactPhone} key={partIndex}>{part.value}</strong> : <span key={partIndex}>{part.value}</span>)}</div>) : "Aucun"}</td><td className={styles.mark}>{outing}</td><td className={styles.mark}>{image}</td><td className={styles.mark}>{care}</td><td className={styles.mark}>{transport}</td></tr>)}</tbody></table>;
 }
 
 export default function AuthorizationsPage() {
@@ -70,7 +74,10 @@ export default function AuthorizationsPage() {
     const needle = search.toLocaleLowerCase("fr");
     return items.filter((item) => `${item.firstName} ${item.lastName} ${item.contactEmail} ${item.fields.map((field) => field.value).join(" ")}`.toLocaleLowerCase("fr").includes(needle));
   }, [items, search]);
-  const printRows = useMemo<PrintRow[]>(() => filtered.map((item) => {
+  const printRows = useMemo<PrintRow[]>(() => [...filtered].sort((a, b) =>
+    a.firstName.trim().localeCompare(b.firstName.trim(), "fr", { sensitivity: "base" }) ||
+    a.lastName.trim().localeCompare(b.lastName.trim(), "fr", { sensitivity: "base" })
+  ).map((item) => {
     const outing = fieldMatching(item, (label) => label.includes("autorisation de sortie") || (label.includes("quitter") && label.includes("salle de gym")));
     const care = fieldMatching(item, (label) => label.includes("decision medicale") || (label.includes("accident") && label.includes("urgence")));
     const image = fieldMatching(item, (label) => label.includes("prise de photo") || label.includes("diffusion de photo") || (label.includes("prise") && label.includes("diffusion") && label.includes("photo")));
