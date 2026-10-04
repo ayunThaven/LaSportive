@@ -42,4 +42,18 @@ describe("emergency contact printing", () => {
     expect(text("Dupont Marie\nMartin Paul 0798765432"))
       .toEqual(["Dupont Marie", "Martin Paul: 07 98 76 54 32"]);
   });
+
+  it("separates named alternatives with slash-separated phones", () => {
+    expect(text("Marie Dupont / 0612345678 OU Paul Martin / 0798765432"))
+      .toEqual(["Marie Dupont: 06 12 34 56 78", "Paul Martin: 07 98 76 54 32"]);
+    expect(text("Marie Dupont / 06 12 34 56 78 ou Paul Martin / 07 98 76 54 32"))
+      .toEqual(["Marie Dupont: 06 12 34 56 78", "Paul Martin: 07 98 76 54 32"]);
+  });
+
+  it("keeps consecutive phones with the same person", () => {
+    for (const numbers of ["0612345678 0798765432", "06 12 34 56 78 07 98 76 54 32", "0612345678 / 0798765432", "0612345678\n0798765432"]) {
+      expect(text(`Marie Dupont ${numbers}`))
+        .toEqual(["Marie Dupont: 06 12 34 56 78 / 07 98 76 54 32"]);
+    }
+  });
 });
