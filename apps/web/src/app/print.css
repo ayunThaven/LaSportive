@@ -1,5 +1,7 @@
 @media print{
-  body:has(.authorizationsPrint){background:#fff}
-  body:has(.authorizationsPrint) *{visibility:hidden}
-  body:has(.authorizationsPrint) .authorizationsPrint,body:has(.authorizationsPrint) .authorizationsPrint *{visibility:visible}
+  html:has(.authorizationsPrint),body:has(.authorizationsPrint){background:#fff;min-height:0;height:auto}
+  /* Remove screen-only content from layout so it cannot produce blank pages. */
+  body:has(.authorizationsPrint) *:not(.authorizationsPrint):not(.authorizationsPrint *):not(:has(.authorizationsPrint)){display:none!important}
+  /* Keep only the ancestors of the register, without the app's screen layout. */
+  body:has(.authorizationsPrint) :has(.authorizationsPrint){display:block;position:static;margin:0;padding:0;width:auto;max-width:none;height:auto;min-height:0;overflow:visible}
 }

@@ -5,10 +5,11 @@ import type { AuthorizationRowDto } from "@la-sportive/contracts";
 import { Printer, Search, ShieldCheck } from "lucide-react";
 import { Button, EmptyState, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
+import { formatEmergencyContacts, type ContactPart } from "@/lib/emergency-contacts";
 import styles from "./page.module.css";
 
 type AuthorizationField = AuthorizationRowDto["fields"][number];
-type PrintRow = { item: AuthorizationRowDto; emergency: string; outing: string; image: string; care: string; transport: string };
+type PrintRow = { item: AuthorizationRowDto; emergency: ContactPart[][]; outing: string; image: string; care: string; transport: string };
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").toLocaleLowerCase("fr").trim();
@@ -22,15 +23,14 @@ function displayValue(value: string) {
   return value || <span className="muted">Non renseigné</span>;
 }
 
-function compactContact(field?: AuthorizationField) {
-  if (!field?.value.trim()) return "Aucun";
-  const value = field.value.trim();
-  const phone = value.match(/(?:\+\d{1,3}[ .-]?)?(?:\d[ .-]?){8,14}\d/)?.[0]?.replace(/\s+/g, " ");
-  if (!phone) return "Aucun";
-  const namePart = (value.split(/\s*\/\s*/)[0] ?? "").replace(phone ?? "", "").trim();
-  const uppercaseName = namePart.match(/^([A-ZÀ-ÖØ-Þ' -]+)(?=\s|$)/)?.[1]?.trim();
-  const lastName = uppercaseName || namePart.split(/\s+/)[0] || "—";
-  return `${lastName} : ${phone}`;
+function emergencyContacts(item: AuthorizationRowDto) {
+  const contacts = item.fields
+    .filter((field) => {
+      const label = normalize(field.label);
+      return label.includes("contact") && label.includes("urgence");
+    })
+    .flatMap((field) => formatEmergencyContacts(field.value));
+  return contacts;
 }
 
 function printMark(field?: AuthorizationField) {
@@ -45,7 +45,7 @@ function fieldMatching(item: AuthorizationRowDto, predicate: (label: string) => 
 }
 
 function PrintTable({ rows }: { rows: PrintRow[] }) {
-  return <table className={styles.printTable}><thead><tr><th>Adhérent</th><th>Contact d&apos;urgence</th><th>Sortie</th><th>Droit à l&apos;image</th><th>Soins</th><th>Transport</th></tr></thead><tbody>{rows.map(({ item, emergency, outing, image, care, transport }) => <tr key={item.id}><td>{item.firstName} {item.lastName}</td><td>{emergency}</td><td className={styles.mark}>{outing}</td><td className={styles.mark}>{image}</td><td className={styles.mark}>{care}</td><td className={styles.mark}>{transport}</td></tr>)}</tbody></table>;
+  return <table className={styles.printTable}><thead><tr><th>Adhérent</th><th>Contacts d&apos;urgence</th><th>Sortie</th><th>Droit à l&apos;image</th><th>Soins</th><th>Transport</th></tr></thead><tbody>{rows.map(({ item, emergency, outing, image, care, transport }) => <tr key={item.id}><td>{item.firstName} {item.lastName}</td><td className={styles.emergencyContact}>{emergency.length ? emergency.map((parts, index) => <div className={styles.contactEntry} key={index}>{parts.map((part, partIndex) => part.kind === "phone" ? <strong className={styles.contactPhone} key={partIndex}>{part.value}</strong> : <span key={partIndex}>{part.value}</span>)}</div>) : "Aucun"}</td><td className={styles.mark}>{outing}</td><td className={styles.mark}>{image}</td><td className={styles.mark}>{care}</td><td className={styles.mark}>{transport}</td></tr>)}</tbody></table>;
 }
 
 export default function AuthorizationsPage() {
@@ -71,12 +71,11 @@ export default function AuthorizationsPage() {
     return items.filter((item) => `${item.firstName} ${item.lastName} ${item.contactEmail} ${item.fields.map((field) => field.value).join(" ")}`.toLocaleLowerCase("fr").includes(needle));
   }, [items, search]);
   const printRows = useMemo<PrintRow[]>(() => filtered.map((item) => {
-    const contact = fieldMatching(item, (label) => label.includes("contact") && label.includes("urgence"));
     const outing = fieldMatching(item, (label) => label.includes("autorisation de sortie") || (label.includes("quitter") && label.includes("salle de gym")));
     const care = fieldMatching(item, (label) => label.includes("decision medicale") || (label.includes("accident") && label.includes("urgence")));
     const image = fieldMatching(item, (label) => label.includes("prise de photo") || label.includes("diffusion de photo") || (label.includes("prise") && label.includes("diffusion") && label.includes("photo")));
     const transport = fieldMatching(item, (label) => label.includes("transporter"));
-    return { item, emergency: compactContact(contact), outing: printMark(outing), image: printMark(image), care: printMark(care), transport: printMark(transport) };
+    return { item, emergency: emergencyContacts(item), outing: printMark(outing), image: printMark(image), care: printMark(care), transport: printMark(transport) };
   }), [filtered]);
 
   return <>

@@ -1,8 +1,7 @@
 .printSheet{display:none}
 
 @media print{
-  .printSheet,.printSheet *{visibility:visible}
-  .printSheet{display:block;position:absolute;inset:0;width:100%;padding:10mm;color:#000;font-family:Arial,sans-serif}
+  .printSheet{display:block;position:static;width:100%;padding:10mm;color:#000;font-family:Arial,sans-serif}
   .printSheet h1{margin:0;font-size:16pt}
   .printSheet p{margin:2mm 0 5mm;font-size:9pt}
   .printTable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5pt}
@@ -12,6 +11,9 @@
   .printTable th:nth-child(2){width:28%}
   .printTable th:nth-child(3),.printTable th:nth-child(4),.printTable th:nth-child(5),.printTable th:nth-child(6){width:12.5%}
   .printTable tr{break-inside:avoid}
+  .emergencyContact{white-space:pre-wrap}
+  .contactEntry{line-height:1.5;break-inside:avoid}
+  .contactPhone{display:inline-block;white-space:nowrap;font-variant-numeric:tabular-nums}
   .mark{text-align:center;font-size:12pt;font-weight:700;vertical-align:middle!important}
   @page{size:A4 landscape;margin:8mm}
 }
